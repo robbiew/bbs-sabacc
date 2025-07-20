@@ -26,17 +26,20 @@ var (
 
 // SabaccGame represents the main game state
 type SabaccGame struct {
-	User       gd.User
-	Deck       Deck
-	Players    []Player
-	HandPot    int
-	SabaccPot  int
-	CurrentBet int
-	Round      int
-	Turn       int
-	Dealer     int
-	Called     bool
-	GameOver   bool
+	User          gd.User
+	Deck          Deck
+	Players       []Player
+	HandPot       int
+	SabaccPot     int
+	CurrentBet    int
+	Round         int
+	Turn          int
+	Dealer        int
+	Called        bool
+	GameOver      bool
+	MinRounds     int  // Minimum rounds before calling allowed
+	BettingPhase  bool // True during betting, false during play
+	ShiftOccurred bool // Track if shift happened this turn
 }
 
 // Player represents a player in the game
@@ -47,6 +50,7 @@ type Player struct {
 	Credits     int
 	Folded      bool
 	BombedOut   bool
+	HasActed    bool // Track if player has acted this round
 }
 
 func init() {
@@ -92,6 +96,7 @@ func main() {
 		Round:     0,
 		Turn:      0,
 		Dealer:    0,
+		MinRounds: 1, // Classic rules: minimum 1-4 rounds
 	}
 
 	// Show title screen
@@ -105,7 +110,7 @@ func showTitleScreen() {
 	gd.ClearScreen()
 	gd.MoveCursor(0, 0)
 
-	// Center title text since we don't have ANSI art yet
+	// Center title text
 	centerY := game.User.H / 2
 	gd.MoveCursor(1, centerY-3)
 	fmt.Print(gd.YellowHi + "███████  █████  ██████   █████   ██████  ██████" + gd.Reset)
@@ -118,8 +123,10 @@ func showTitleScreen() {
 	gd.MoveCursor(1, centerY+1)
 	fmt.Print(gd.YellowHi + "███████ ██   ██ ██████  ██   ██  ██████  ██████" + gd.Reset)
 
-	gd.MoveCursor(1, centerY+4)
+	gd.MoveCursor(1, centerY+3)
 	fmt.Print(gd.Cyan + "Classic 76-Card Sabacc for BBS" + gd.Reset)
+	gd.MoveCursor(1, centerY+4)
+	fmt.Print(gd.White + "West End Games Rules (1989)" + gd.Reset)
 	gd.MoveCursor(1, centerY+6)
 	fmt.Print(gd.White + "Welcome, " + gd.CyanHi + game.User.Alias + gd.Reset)
 
@@ -170,32 +177,39 @@ func mainMenu() {
 func startNewGame() {
 	gd.ClearScreen()
 
-	// Initialize deck
+	// Initialize deck (76 cards)
 	game.Deck = NewDeck()
 	game.Deck.Shuffle()
 
 	// Reset game state
 	game.Round = 0
-	game.Turn = 1
+	game.Turn = 1 // Start with player to dealer's left
 	game.Dealer = 0
 	game.Called = false
 	game.GameOver = false
+	game.BettingPhase = false
+	game.ShiftOccurred = false
 
-	// Setup players (for now, just player vs computer)
+	// Setup players
 	game.Players = []Player{
 		{Name: game.User.Alias, Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},
 		{Name: "Droid Dealer", Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},
 	}
 
-	// Initial ante
-	game.HandPot = 20   // 10 credits from each player
-	game.SabaccPot = 20 // 10 credits from each player
+	// ANTE PHASE - Both players ante into both pots
+	anteAmount := 10
+	game.HandPot = anteAmount * 2
+	game.SabaccPot = anteAmount * 2
 
 	// Deduct ante from players
-	game.Players[0].Credits -= 10
-	game.Players[1].Credits -= 10
+	for i := range game.Players {
+		game.Players[i].Credits -= anteAmount * 2 // Ante goes to both pots
+	}
 
-	// Deal initial hands
+	fmt.Printf("%sAnting %d credits to each pot...%s\n", gd.Green, anteAmount, gd.Reset)
+	time.Sleep(2 * time.Second)
+
+	// DEALING ROUND - Deal 2 cards to each player
 	for i := 0; i < 2; i++ {
 		for j := range game.Players {
 			if len(game.Deck.Cards) > 0 {
@@ -217,13 +231,10 @@ func gameLoop() {
 	game.Turn = 1 // Start with player after dealer
 
 	for !game.GameOver {
-		displayGameScreen()
+		// Check if minimum rounds completed for calling
+		canCall := game.Round >= game.MinRounds
 
-		// Check if current player is folded and skip their turn
-		if game.Players[game.Turn].Folded {
-			nextTurn()
-			continue
-		}
+		displayGameScreen()
 
 		// Check if only one player remains (others folded)
 		activePlayers := 0
@@ -247,10 +258,11 @@ func gameLoop() {
 			break
 		}
 
+		// PLAYER TURN - 4 phases: Bet, Roll, Call, Draw
 		if game.Turn == 0 { // Human player
-			handlePlayerTurn()
+			handlePlayerTurn(canCall)
 		} else { // Computer player
-			handleComputerTurn()
+			handleComputerTurn(canCall)
 		}
 
 		// Check for game end conditions
@@ -267,69 +279,83 @@ func gameLoop() {
 	waitForKey()
 }
 
-func displayGameScreen() {
-	gd.ClearScreen()
-	gd.MoveCursor(0, 0)
-
-	// Game header
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "                SABACC GAME\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
-
-	// Pot information
-	fmt.Printf("%sHand Pot:%s %s%d%s    %sSabacc Pot:%s %s%d%s    %sRound:%s %s%d%s\n\n",
-		gd.Yellow, gd.Reset, gd.YellowHi, game.HandPot, gd.Reset,
-		gd.Yellow, gd.Reset, gd.YellowHi, game.SabaccPot, gd.Reset,
-		gd.Yellow, gd.Reset, gd.YellowHi, game.Round, gd.Reset)
-
-	// Display opponent's hand (face down)
-	opponent := &game.Players[1]
-	fmt.Printf("%s%s's Hand:%s ", gd.Cyan, opponent.Name, gd.Reset)
-	for i := 0; i < len(opponent.Hand); i++ {
-		fmt.Printf("%s[??]%s ", gd.Red, gd.Reset)
-	}
-	fmt.Printf("  %sCredits:%s %s%d%s\n\n",
-		gd.Yellow, gd.Reset, gd.YellowHi, opponent.Credits, gd.Reset)
-
-	// Display player's hand
-	playerHand := &game.Players[0]
-	fmt.Printf("%sYour Hand:%s ", gd.Cyan, gd.Reset)
-	total := 0
-	for _, card := range playerHand.Hand {
-		fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
-		total += card.Value
-	}
-	fmt.Printf("  %sTotal:%s %s%d%s  %sCredits:%s %s%d%s\n\n",
-		gd.Yellow, gd.Reset, gd.YellowHi, total, gd.Reset,
-		gd.Yellow, gd.Reset, gd.YellowHi, playerHand.Credits, gd.Reset)
-
-	// Display static field if any
-	if len(playerHand.StaticField) > 0 {
-		fmt.Printf("%sStatic Field:%s ", gd.Magenta, gd.Reset)
-		for _, card := range playerHand.StaticField {
-			fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
-		}
-		fmt.Println()
-	}
-
+func handlePlayerTurn(canCall bool) {
 	fmt.Println()
+	fmt.Printf("%s=== %s's Turn ===%s\n", gd.CyanHi, game.Players[game.Turn].Name, gd.Reset)
 
-	// Show whose turn it is
-	if game.Turn == 0 {
-		fmt.Print(gd.GreenHi + "YOUR TURN\n" + gd.Reset)
-	} else {
-		fmt.Printf("%s%s's turn...%s\n", gd.YellowHi, game.Players[game.Turn].Name, gd.Reset)
+	// PHASE 1: BET
+	handleBettingPhase()
+
+	// PHASE 2: ROLL (for Sabacc Shift)
+	rollForShift()
+
+	// PHASE 3: CALL (allow others to call)
+	if canCall {
+		handleCallPhase()
+	}
+
+	// PHASE 4: DRAW
+	if !game.Called {
+		handleDrawPhase()
 	}
 }
 
-func handlePlayerTurn() {
-	fmt.Println()
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "D" + gd.Yellow + "] " + gd.White + "Draw card\n" + gd.Reset)
+func handleBettingPhase() {
+	fmt.Printf("\n%sBETTING PHASE%s\n", gd.Yellow, gd.Reset)
+	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "C" + gd.Yellow + "] " + gd.White + "Check/Call\n" + gd.Reset)
+	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "R" + gd.Yellow + "] " + gd.White + "Raise\n" + gd.Reset)
+	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "F" + gd.Yellow + "] " + gd.White + "Fold\n\n" + gd.Reset)
+	fmt.Print(gd.Green + "Choice: " + gd.Reset)
+
+	char, _, err := getKeyWithTimeout()
+	if err != nil {
+		return
+	}
+
+	switch char {
+	case 'c', 'C':
+		// Call current bet (if any)
+		fmt.Printf("\n%sYou check/call.%s\n", gd.Green, gd.Reset)
+		time.Sleep(1 * time.Second)
+	case 'r', 'R':
+		// Raise bet
+		raiseAmount := 10 // Simple raise amount
+		game.Players[0].Credits -= raiseAmount
+		game.HandPot += raiseAmount
+		game.CurrentBet += raiseAmount
+		fmt.Printf("\n%sYou raise by %d credits.%s\n", gd.Green, raiseAmount, gd.Reset)
+		time.Sleep(1 * time.Second)
+	case 'f', 'F':
+		// Fold
+		game.Players[0].Folded = true
+		game.Players[0].Credits -= 1 // Fold penalty to Sabacc pot
+		game.SabaccPot += 1
+		fmt.Printf("\n%sYou folded.%s\n", gd.Red, gd.Reset)
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func handleCallPhase() {
+	// In single player vs computer, computer decides whether to call
+	if game.Turn == 0 {
+		fmt.Printf("\n%sAsking if anyone wants to call the hand...%s\n", gd.Yellow, gd.Reset)
+		time.Sleep(1 * time.Second)
+		// Computer AI decides - simplified logic
+		computerTotal := calculateHandTotal(game.Players[1].Hand)
+		if computerTotal >= 20 && computerTotal <= 23 {
+			game.Called = true
+			fmt.Printf("\n%s%s calls the hand!%s\n", gd.GreenHi, game.Players[1].Name, gd.Reset)
+			time.Sleep(1 * time.Second)
+		}
+	}
+}
+
+func handleDrawPhase() {
+	fmt.Printf("\n%sDRAW PHASE%s\n", gd.Yellow, gd.Reset)
+	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "G" + gd.Yellow + "] " + gd.White + "Gain (draw card)\n" + gd.Reset)
 	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "T" + gd.Yellow + "] " + gd.White + "Trade card\n" + gd.Reset)
 	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "S" + gd.Yellow + "] " + gd.White + "Stand (do nothing)\n" + gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "F" + gd.Yellow + "] " + gd.White + "Place card in Static Field\n" + gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "C" + gd.Yellow + "] " + gd.White + "Call hand\n" + gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "Q" + gd.Yellow + "] " + gd.White + "Fold\n\n" + gd.Reset)
+	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "F" + gd.Yellow + "] " + gd.White + "Static Field\n\n" + gd.Reset)
 	fmt.Print(gd.Green + "Choice: " + gd.Reset)
 
 	char, _, err := getKeyWithTimeout()
@@ -340,7 +366,8 @@ func handlePlayerTurn() {
 	playerRef := &game.Players[0]
 
 	switch char {
-	case 'd', 'D':
+	case 'g', 'G':
+		// Gain: Draw one card
 		if len(game.Deck.Cards) > 0 {
 			card := game.Deck.Deal()
 			playerRef.Hand = append(playerRef.Hand, card)
@@ -348,99 +375,90 @@ func handlePlayerTurn() {
 			time.Sleep(1 * time.Second)
 		}
 	case 't', 'T':
+		// Trade: Discard one card, draw one card
 		handleTradeCard()
 	case 's', 'S':
+		// Stand: Do nothing
 		fmt.Printf("\n%sYou stand.%s\n", gd.Green, gd.Reset)
 		time.Sleep(1 * time.Second)
 	case 'f', 'F':
+		// Static Field management
 		handleStaticField()
-	case 'c', 'C':
-		if game.Round >= 2 { // Can only call after round 2
-			game.Called = true
-			fmt.Printf("\n%sYou called the hand!%s\n", gd.GreenHi, gd.Reset)
-			time.Sleep(1 * time.Second)
-		} else {
-			fmt.Printf("\n%sCannot call until round 2!%s\n", gd.Red, gd.Reset)
-			time.Sleep(1 * time.Second)
-		}
-	case 'q', 'Q':
-		playerRef.Folded = true
-		playerRef.Credits -= 1 // Fold penalty
-		game.SabaccPot += 1
-		fmt.Printf("\n%sYou folded.%s\n", gd.Red, gd.Reset)
-		time.Sleep(1 * time.Second)
-	}
-
-	// Roll dice for Sabacc Shift
-	if !playerRef.Folded {
-		rollForShift()
 	}
 }
 
-func handleComputerTurn() {
+func handleComputerTurn(canCall bool) {
 	computer := &game.Players[1]
 
-	// Don't process turn if computer has folded
 	if computer.Folded {
 		return
 	}
 
 	time.Sleep(2 * time.Second) // Simulate thinking
 
-	total := calculateHandTotal(computer.Hand)
+	fmt.Printf("\n%s=== %s's Turn ===%s\n", gd.CyanHi, computer.Name, gd.Reset)
 
-	// Simple AI logic
-	if total > 20 || total < -20 {
-		// Risky hand, might fold or try to improve
-		if game.Round > 2 && total > 23 {
-			computer.Folded = true
-			computer.Credits -= 1
-			game.SabaccPot += 1
-			fmt.Printf("\n%s%s folds.%s\n", gd.Red, computer.Name, gd.Reset)
-		} else if len(computer.Hand) > 2 {
-			// Trade a card
-			computer.Hand = computer.Hand[1:] // Remove first card
+	// PHASE 1: BET (simplified AI)
+	fmt.Printf("\n%s%s checks.%s\n", gd.Yellow, computer.Name, gd.Reset)
+	time.Sleep(1 * time.Second)
+
+	// PHASE 2: ROLL
+	rollForShift()
+
+	// PHASE 3: CALL
+	if canCall {
+		total := calculateHandTotal(computer.Hand)
+		if total >= 20 && total <= 23 && game.Round >= 2 {
+			game.Called = true
+			fmt.Printf("\n%s%s calls the hand!%s\n", gd.GreenHi, computer.Name, gd.Reset)
+			time.Sleep(1 * time.Second)
+			return
+		}
+	}
+
+	// PHASE 4: DRAW
+	if !game.Called {
+		total := calculateHandTotal(computer.Hand)
+
+		if total > 20 || total < -20 {
+			// Risky hand, might fold or try to improve
+			if total > 23 || total < -23 {
+				computer.Folded = true
+				computer.Credits -= 1
+				game.SabaccPot += 1
+				fmt.Printf("\n%s%s folds.%s\n", gd.Red, computer.Name, gd.Reset)
+			} else if len(computer.Hand) > 2 {
+				// Trade a card
+				computer.Hand = computer.Hand[1:] // Remove first card (simplified)
+				if len(game.Deck.Cards) > 0 {
+					card := game.Deck.Deal()
+					computer.Hand = append(computer.Hand, card)
+					fmt.Printf("\n%s%s trades a card.%s\n", gd.Yellow, computer.Name, gd.Reset)
+				}
+			} else {
+				fmt.Printf("\n%s%s stands.%s\n", gd.Yellow, computer.Name, gd.Reset)
+			}
+		} else {
+			// Try to improve hand
 			if len(game.Deck.Cards) > 0 {
 				card := game.Deck.Deal()
 				computer.Hand = append(computer.Hand, card)
-				fmt.Printf("\n%s%s trades a card.%s\n", gd.Yellow, computer.Name, gd.Reset)
+				fmt.Printf("\n%s%s draws a card.%s\n", gd.Yellow, computer.Name, gd.Reset)
+			} else {
+				fmt.Printf("\n%s%s stands.%s\n", gd.Yellow, computer.Name, gd.Reset)
 			}
-		} else {
-			fmt.Printf("\n%s%s stands.%s\n", gd.Yellow, computer.Name, gd.Reset)
-		}
-	} else if total >= 20 && total <= 23 {
-		// Good hand, call or stand
-		if game.Round >= 2 {
-			game.Called = true
-			fmt.Printf("\n%s%s calls the hand!%s\n", gd.GreenHi, computer.Name, gd.Reset)
-		} else {
-			fmt.Printf("\n%s%s stands.%s\n", gd.Yellow, computer.Name, gd.Reset)
-		}
-	} else {
-		// Try to improve hand
-		if len(game.Deck.Cards) > 0 {
-			card := game.Deck.Deal()
-			computer.Hand = append(computer.Hand, card)
-			fmt.Printf("\n%s%s draws a card.%s\n", gd.Yellow, computer.Name, gd.Reset)
-		} else {
-			fmt.Printf("\n%s%s stands.%s\n", gd.Yellow, computer.Name, gd.Reset)
 		}
 	}
 
 	time.Sleep(1 * time.Second)
-
-	// Only roll for shift if computer hasn't folded
-	if !computer.Folded {
-		rollForShift()
-	}
 }
 
 func rollForShift() {
-	// Simulate dice roll (1/36 chance of shift - rolling double sixes)
+	// Roll two dice - shift occurs on doubles
 	dice1 := (time.Now().UnixNano() % 6) + 1
 	dice2 := ((time.Now().UnixNano() / 1000) % 6) + 1
 
-	fmt.Printf("\n%sDice roll:%s %s%d%s, %s%d%s",
+	fmt.Printf("\n%sRolling dice:%s %s%d%s, %s%d%s",
 		gd.Yellow, gd.Reset, gd.YellowHi, dice1, gd.Reset, gd.YellowHi, dice2, gd.Reset)
 
 	if dice1 == dice2 {
@@ -450,7 +468,7 @@ func rollForShift() {
 		allCards := []Card{}
 		for i := range game.Players {
 			if !game.Players[i].Folded {
-				// Keep static field cards, collect others
+				// Cards in static field are protected
 				newHand := make([]Card, len(game.Players[i].StaticField))
 				copy(newHand, game.Players[i].StaticField)
 
@@ -476,10 +494,11 @@ func rollForShift() {
 		game.Deck.Cards = append(game.Deck.Cards, allCards...)
 		game.Deck.Shuffle()
 
-		// Deal new hands (2 cards base plus any static field cards)
+		// Deal new hands (maintain original hand size)
 		for i := range game.Players {
 			if !game.Players[i].Folded {
-				cardsNeeded := 2 // Start with 2 cards minimum
+				originalSize := 2                                       // Original hand size was 2
+				cardsNeeded := originalSize - len(game.Players[i].Hand) // Subtract static field cards
 				for j := 0; j < cardsNeeded; j++ {
 					if len(game.Deck.Cards) > 0 {
 						card := game.Deck.Deal()
@@ -497,14 +516,14 @@ func rollForShift() {
 }
 
 func nextTurn() {
-	// Keep cycling through players until we find one who hasn't folded
+	// Move to next player
 	originalTurn := game.Turn
 
 	for {
 		game.Turn = (game.Turn + 1) % len(game.Players)
 
-		// If we've completed a full round (back to dealer)
-		if game.Turn == game.Dealer {
+		// If we've completed a full round (back to player after dealer)
+		if game.Turn == (game.Dealer+1)%len(game.Players) {
 			game.Round++
 		}
 
@@ -521,9 +540,10 @@ func resolveHand() {
 	fmt.Print(gd.CyanHi + "                HAND RESULTS\n" + gd.Reset)
 	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
 
-	// Show all hands
+	// Show all hands and determine winner
 	winner := -1
 	bestScore := -999
+	sabaccWinner := -1
 
 	for i, playerData := range game.Players {
 		if playerData.Folded {
@@ -538,22 +558,21 @@ func resolveHand() {
 		}
 		fmt.Printf("= %s%d%s", gd.YellowHi, total, gd.Reset)
 
-		// Check for special hands
+		// Check for special hands (Sabacc Pot winners)
 		if isIdiotsArray(playerData.Hand) {
 			fmt.Printf(" %s(IDIOT'S ARRAY!)%s", gd.GreenHi, gd.Reset)
-			winner = i
-			bestScore = 1000 // Highest priority
-		} else if total == 23 {
+			sabaccWinner = i // Idiot's Array beats Pure Sabacc
+		} else if total == 23 && sabaccWinner == -1 {
 			fmt.Printf(" %s(PURE SABACC!)%s", gd.GreenHi, gd.Reset)
-			if bestScore < 999 {
-				winner = i
-				bestScore = 999
-			}
+			sabaccWinner = i
 		} else if total > 23 || total < -23 || total == 0 {
 			fmt.Printf(" %s(BOMBED OUT!)%s", gd.Red, gd.Reset)
-			game.Players[i].Credits -= game.HandPot
-			game.SabaccPot += game.HandPot
-		} else if total <= 23 && total > bestScore && bestScore < 100 {
+			game.Players[i].BombedOut = true
+			// Bombed out player pays Hand Pot amount to Sabacc Pot
+			penalty := game.HandPot
+			game.Players[i].Credits -= penalty
+			game.SabaccPot += penalty
+		} else if total <= 23 && total > bestScore {
 			winner = i
 			bestScore = total
 		}
@@ -562,24 +581,140 @@ func resolveHand() {
 
 	fmt.Println()
 
+	// Award Sabacc Pot if applicable
+	if sabaccWinner >= 0 {
+		fmt.Printf("%s%s wins the Sabacc Pot! (+%d credits)%s\n",
+			gd.GreenHi, game.Players[sabaccWinner].Name, game.SabaccPot, gd.Reset)
+		game.Players[sabaccWinner].Credits += game.SabaccPot
+		game.SabaccPot = 0
+		winner = sabaccWinner // Sabacc also wins hand pot
+	}
+
+	// Award Hand Pot
 	if winner >= 0 {
-		fmt.Printf("%s%s wins the hand! (+%d credits)%s\n",
+		fmt.Printf("%s%s wins the Hand Pot! (+%d credits)%s\n",
 			gd.GreenHi, game.Players[winner].Name, game.HandPot, gd.Reset)
 		game.Players[winner].Credits += game.HandPot
-
-		// Check if they also win the Sabacc Pot
-		if bestScore >= 999 {
-			fmt.Printf("%s%s also wins the Sabacc Pot! (+%d credits)%s\n",
-				gd.GreenHi, game.Players[winner].Name, game.SabaccPot, gd.Reset)
-			game.Players[winner].Credits += game.SabaccPot
-			game.SabaccPot = 0
-		}
 	} else {
 		fmt.Printf("%sNo winner! Hand pot goes to Sabacc pot.%s\n", gd.Yellow, gd.Reset)
 		game.SabaccPot += game.HandPot
 	}
 
 	game.GameOver = true
+}
+
+// Add these fixes to your displayGameScreen() function in main.go
+
+func displayGameScreen() {
+	gd.ClearScreen()
+	gd.MoveCursor(0, 0)
+
+	// Game header
+	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + "                SABACC GAME\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
+
+	// Pot information
+	fmt.Printf("%sHand Pot:%s %s%d%s    %sSabacc Pot:%s %s%d%s    %sRound:%s %s%d%s\n\n",
+		gd.Yellow, gd.Reset, gd.YellowHi, game.HandPot, gd.Reset,
+		gd.Yellow, gd.Reset, gd.YellowHi, game.SabaccPot, gd.Reset,
+		gd.Yellow, gd.Reset, gd.YellowHi, game.Round, gd.Reset)
+
+	// Display opponent's hand (face down unless game over)
+	opponent := &game.Players[1]
+	fmt.Printf("%s%s's Hand:%s ", gd.Cyan, opponent.Name, gd.Reset)
+	if game.GameOver || game.Called {
+		// Show opponent's actual cards
+		for _, card := range opponent.Hand {
+			color := getCardColor(card)
+			cardStr := card.String()
+			fmt.Printf("%s[%s]%s ", color, cardStr, gd.Reset)
+		}
+		total := calculateHandTotal(opponent.Hand)
+		fmt.Printf("  %sTotal:%s %s%d%s",
+			gd.Yellow, gd.Reset, gd.YellowHi, total, gd.Reset)
+	} else {
+		// Show face down cards
+		for i := 0; i < len(opponent.Hand); i++ {
+			fmt.Printf("%s[??]%s ", gd.Red, gd.Reset)
+		}
+	}
+	fmt.Printf("  %sCredits:%s %s%d%s\n",
+		gd.Yellow, gd.Reset, gd.YellowHi, opponent.Credits, gd.Reset)
+
+	// Show opponent's static field if any
+	if len(opponent.StaticField) > 0 {
+		fmt.Printf("%s%s's Static Field:%s ", gd.Magenta, opponent.Name, gd.Reset)
+		for _, card := range opponent.StaticField {
+			color := getCardColor(card)
+			cardStr := card.String()
+			fmt.Printf("%s[%s]%s ", color, cardStr, gd.Reset)
+		}
+		fmt.Println()
+	}
+
+	fmt.Println()
+
+	// Display player's hand
+	playerHand := &game.Players[0]
+	fmt.Printf("%sYour Hand:%s ", gd.Cyan, gd.Reset)
+	total := 0
+	for _, card := range playerHand.Hand {
+		color := getCardColor(card)
+		cardStr := card.String()
+		fmt.Printf("%s[%s]%s ", color, cardStr, gd.Reset)
+		total += card.Value
+	}
+
+	// Fix the hand value display
+	handValueStr := formatHandValue(total)
+	fmt.Printf("  %sTotal:%s %s  %sCredits:%s %s%d%s\n",
+		gd.Yellow, gd.Reset, handValueStr,
+		gd.Yellow, gd.Reset, gd.YellowHi, playerHand.Credits, gd.Reset)
+
+	// Display player's static field if any
+	if len(playerHand.StaticField) > 0 {
+		fmt.Printf("%sYour Static Field:%s ", gd.Magenta, gd.Reset)
+		for _, card := range playerHand.StaticField {
+			color := getCardColor(card)
+			cardStr := card.String()
+			fmt.Printf("%s[%s]%s ", color, cardStr, gd.Reset)
+		}
+		fmt.Println()
+	}
+
+	fmt.Println()
+
+	// Show whose turn it is
+	if game.Turn == 0 {
+		fmt.Print(gd.GreenHi + "YOUR TURN\n" + gd.Reset)
+	} else {
+		fmt.Printf("%s%s's turn...%s\n", gd.YellowHi, game.Players[game.Turn].Name, gd.Reset)
+	}
+
+	// Show current bet if any
+	if game.CurrentBet > 0 {
+		fmt.Printf("%sCurrent Bet:%s %s%d%s\n", gd.Yellow, gd.Reset, gd.YellowHi, game.CurrentBet, gd.Reset)
+	}
+
+	// Show deck info
+	fmt.Printf("%sDeck:%s %s%d cards remaining%s\n",
+		gd.Magenta, gd.Reset, gd.MagentaHi, len(game.Deck.Cards), gd.Reset)
+}
+
+// Add this helper function to properly format hand values
+func formatHandValue(total int) string {
+	if total == 23 {
+		return gd.GreenHi + "23 (SABACC!)" + gd.Reset
+	} else if total > 23 || total < -23 || total == 0 {
+		return gd.RedHi + fmt.Sprintf("%d (BOMB!)", total) + gd.Reset
+	} else if total >= 20 && total <= 22 {
+		return gd.YellowHi + fmt.Sprintf("%d", total) + gd.Reset
+	} else if total >= -22 && total <= -20 {
+		return gd.YellowHi + fmt.Sprintf("%d", total) + gd.Reset
+	} else {
+		return gd.White + fmt.Sprintf("%d", total) + gd.Reset
+	}
 }
 
 func showGameResults() {
@@ -591,5 +726,3 @@ func showGameResults() {
 	fmt.Println()
 	fmt.Print(gd.Yellow + "Press any key to return to menu..." + gd.Reset)
 }
-
-// Helper functions continue in next part...

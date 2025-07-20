@@ -28,42 +28,90 @@ func waitForKey() {
 	getKeyWithTimeout()
 }
 
-// showRules displays the game rules
+// showRules displays the Classic Sabacc rules (updated for West End Games rules)
 func showRules() {
 	gd.ClearScreen()
 	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "              SABACC RULES\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + "           CLASSIC SABACC RULES\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + "            West End Games (1989)\n" + gd.Reset)
 	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
 
 	fmt.Print(gd.Yellow + "OBJECTIVE:\n" + gd.Reset)
-	fmt.Print(gd.White + "Get as close to 23 as possible without going over.\n\n" + gd.Reset)
+	fmt.Print(gd.White + "Get the highest card total that is ≤ 23.\n\n" + gd.Reset)
 
 	fmt.Print(gd.Yellow + "WINNING HANDS:\n" + gd.Reset)
-	fmt.Print(gd.Green + "• Pure Sabacc: " + gd.White + "Exactly 23 points\n" + gd.Reset)
-	fmt.Print(gd.Green + "• Idiot's Array: " + gd.White + "Idiot card + 2 + 3 (literal 23)\n" + gd.Reset)
-	fmt.Print(gd.White + "  Idiot's Array beats Pure Sabacc!\n\n" + gd.Reset)
+	fmt.Print(gd.Green + "• Pure Sabacc: " + gd.White + "Exactly 23 points (wins Sabacc Pot!)\n" + gd.Reset)
+	fmt.Print(gd.Green + "• Idiot's Array: " + gd.White + "Idiot + 2 + 3 (literal 23)\n" + gd.Reset)
+	fmt.Print(gd.White + "  " + gd.GreenHi + "Idiot's Array beats Pure Sabacc!" + gd.Reset + "\n")
+	fmt.Print(gd.White + "• Highest total ≤ 23 wins Hand Pot\n\n" + gd.Reset)
 
 	fmt.Print(gd.Yellow + "BOMB OUT CONDITIONS:\n" + gd.Reset)
 	fmt.Print(gd.Red + "• Over 23 points\n" + gd.Reset)
 	fmt.Print(gd.Red + "• Under -23 points\n" + gd.Reset)
-	fmt.Print(gd.Red + "• Exactly 0 points\n\n" + gd.Reset)
+	fmt.Print(gd.Red + "• Exactly 0 points\n" + gd.Reset)
+	fmt.Print(gd.White + "Penalty: Pay Hand Pot amount to Sabacc Pot\n\n" + gd.Reset)
+
+	// Show second page of rules
+	fmt.Print(gd.Yellow + "Press any key for turn structure..." + gd.Reset)
+	waitForKey()
+
+	gd.ClearScreen()
+	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + "            TURN STRUCTURE\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
+
+	fmt.Print(gd.Yellow + "EACH TURN HAS 4 PHASES:\n" + gd.Reset)
+	fmt.Print(gd.White + "1. " + gd.CyanHi + "BET:" + gd.White + " Check/Call, Raise, or Fold\n" + gd.Reset)
+	fmt.Print(gd.White + "2. " + gd.CyanHi + "ROLL:" + gd.White + " Roll dice (doubles = Sabacc Shift!)\n" + gd.Reset)
+	fmt.Print(gd.White + "3. " + gd.CyanHi + "CALL:" + gd.White + " Others may call the hand\n" + gd.Reset)
+	fmt.Print(gd.White + "4. " + gd.CyanHi + "DRAW:" + gd.White + " Gain, Trade, Stand, or Static Field\n\n" + gd.Reset)
+
+	fmt.Print(gd.Yellow + "CALLING THE HAND:\n" + gd.Reset)
+	fmt.Print(gd.White + "• Cannot call until minimum rounds completed\n" + gd.Reset)
+	fmt.Print(gd.White + "• Can only call during another player's turn\n" + gd.Reset)
+	fmt.Print(gd.White + "• Triggers final showdown\n\n" + gd.Reset)
 
 	fmt.Print(gd.Yellow + "SABACC SHIFT:\n" + gd.Reset)
-	fmt.Print(gd.White + "Random event that shuffles all hands!\n" + gd.Reset)
-	fmt.Print(gd.White + "Use Static Field to protect important cards.\n\n" + gd.Reset)
+	fmt.Print(gd.White + "• Triggered by rolling doubles\n" + gd.Reset)
+	fmt.Print(gd.White + "• All hands reshuffled and redealt\n" + gd.Reset)
+	fmt.Print(gd.White + "• " + gd.MagentaHi + "Static Field cards are protected!" + gd.Reset + "\n\n")
 
-	fmt.Print(gd.Yellow + "CARD SUITS:\n" + gd.Reset)
+	// Show third page of rules
+	fmt.Print(gd.Yellow + "Press any key for deck information..." + gd.Reset)
+	waitForKey()
+
+	gd.ClearScreen()
+	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + "              DECK & CARDS\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
+
+	fmt.Print(gd.Yellow + "76-CARD DECK:\n" + gd.Reset)
+	fmt.Print(gd.White + "60 Numbered Cards (1-15 in each suit)\n" + gd.Reset)
+	fmt.Print(gd.White + "16 Arcana Cards (negative values, 2 copies each)\n\n" + gd.Reset)
+
+	fmt.Print(gd.Yellow + "POSITIVE SUITS:\n" + gd.Reset)
 	fmt.Print(gd.Blue + "• Sabers (S): " + gd.White + "1-15 points\n" + gd.Reset)
 	fmt.Print(gd.Green + "• Flasks (F): " + gd.White + "1-15 points\n" + gd.Reset)
 	fmt.Print(gd.Yellow + "• Coins (C): " + gd.White + "1-15 points\n" + gd.Reset)
-	fmt.Print(gd.Red + "• Staves (T): " + gd.White + "1-15 points\n" + gd.Reset)
-	fmt.Print(gd.Magenta + "• Arcana: " + gd.White + "Negative value cards\n\n" + gd.Reset)
+	fmt.Print(gd.Red + "• Staves (T): " + gd.White + "1-15 points\n\n" + gd.Reset)
+
+	fmt.Print(gd.Yellow + "ARCANA CARDS (Negative):\n" + gd.Reset)
+	fmt.Print(gd.Magenta + "Death(-1), Strength(-2), Moderation(-3), Evil One(-4)\n" + gd.Reset)
+	fmt.Print(gd.Magenta + "Justice(-5), Queen(-6), Endurance(-7), Balance(-8)\n" + gd.Reset)
+	fmt.Print(gd.Magenta + "Demise(-9), Destruction(-10), Despair(-11), Failure(-12)\n" + gd.Reset)
+	fmt.Print(gd.Magenta + "Futility(-13), Mistress(-14), " + gd.MagentaHi + "Idiot(-15)" + gd.Reset + gd.Magenta + ", Star(-17)\n\n" + gd.Reset)
+
+	fmt.Print(gd.Yellow + "ANTE & POTS:\n" + gd.Reset)
+	fmt.Print(gd.White + "• Both players ante into " + gd.CyanHi + "both" + gd.White + " pots\n" + gd.Reset)
+	fmt.Print(gd.White + "• Hand Pot: Won by best hand ≤ 23\n" + gd.Reset)
+	fmt.Print(gd.White + "• Sabacc Pot: Won by Pure Sabacc or Idiot's Array\n" + gd.Reset)
+	fmt.Print(gd.White + "• Fold penalty: 1 credit to Sabacc Pot\n\n" + gd.Reset)
 
 	fmt.Print(gd.Yellow + "Press any key to return to menu..." + gd.Reset)
 	waitForKey()
 }
 
-// showStats displays player statistics (placeholder)
+// showStats displays player statistics (updated to mention Classic Sabacc)
 func showStats() {
 	gd.ClearScreen()
 	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
@@ -78,23 +126,29 @@ func showStats() {
 	fmt.Print(gd.White + "Pure Sabaccs: " + gd.YellowHi + "0\n" + gd.Reset)
 	fmt.Print(gd.White + "Idiot's Arrays: " + gd.YellowHi + "0\n" + gd.Reset)
 	fmt.Print(gd.White + "Bomb Outs: " + gd.YellowHi + "0\n" + gd.Reset)
+	fmt.Print(gd.White + "Sabacc Shifts Survived: " + gd.YellowHi + "0\n" + gd.Reset)
 	fmt.Print(gd.White + "Credits Won: " + gd.YellowHi + "0\n" + gd.Reset)
 	fmt.Print(gd.White + "Credits Lost: " + gd.YellowHi + "0\n\n" + gd.Reset)
 
 	fmt.Print(gd.Red + "Statistics tracking not yet implemented.\n" + gd.Reset)
 	fmt.Print(gd.Red + "This feature will be added in a future version.\n\n" + gd.Reset)
 
+	fmt.Print(gd.Cyan + "Classic Sabacc follows the original West End Games\n" + gd.Reset)
+	fmt.Print(gd.Cyan + "rules from the 1989 Crisis on Cloud City supplement.\n\n" + gd.Reset)
+
 	fmt.Print(gd.Yellow + "Press any key to return to menu..." + gd.Reset)
 	waitForKey()
 }
 
-// exitGame handles clean exit
+// exitGame handles clean exit (updated message)
 func exitGame() {
 	gd.ClearScreen()
 	gd.MoveCursor(1, game.User.H/2)
-	fmt.Print(gd.CyanHi + "Thanks for playing Sabacc!" + gd.Reset)
+	fmt.Print(gd.CyanHi + "Thanks for playing Classic Sabacc!" + gd.Reset)
 	gd.MoveCursor(1, game.User.H/2+2)
 	fmt.Print(gd.Yellow + "May the Force be with you, " + game.User.Alias + "!" + gd.Reset)
+	gd.MoveCursor(1, game.User.H/2+4)
+	fmt.Print(gd.White + "West End Games Rules (1989)" + gd.Reset)
 	gd.MoveCursor(1, game.User.H-1)
 	time.Sleep(2 * time.Second)
 	os.Exit(0)
@@ -102,7 +156,7 @@ func exitGame() {
 
 // displayWelcomeMessage shows a welcome message with game info
 func displayWelcomeMessage() {
-	fmt.Printf("%sWelcome to the Sabacc tables, %s%s%s!\n\n",
+	fmt.Printf("%sWelcome to the Classic Sabacc tables, %s%s%s!\n\n",
 		gd.Cyan, gd.CyanHi, game.User.Alias, gd.Reset)
 	fmt.Printf("%sTerminal: %s%dx%d%s  ",
 		gd.Yellow, gd.YellowHi, game.User.W, game.User.H, gd.Reset)
@@ -206,6 +260,10 @@ func playSound(soundType string) {
 		fmt.Print("\a")
 	case "lose":
 		fmt.Print("\a")
+	case "shift":
+		fmt.Print("\a") // Sound for Sabacc Shift
+	case "sabacc":
+		fmt.Print("\a\a") // Double bell for Pure Sabacc
 	}
 }
 
@@ -227,6 +285,14 @@ func displayAsciiArt(artType string) {
 		fmt.Println("  ██████  ██    ██ ██ ████ ██ ██████  ██")
 		fmt.Println("  ██   ██ ██    ██ ██  ██  ██ ██   ██   ")
 		fmt.Println("  ██████   ██████  ██      ██ ██████  ██")
+		fmt.Print(gd.Reset)
+	case "shift":
+		fmt.Print(gd.YellowHi)
+		fmt.Println("  ███████ ██   ██ ██ ███████ ████████ ██")
+		fmt.Println("  ██      ██   ██ ██ ██         ██    ██")
+		fmt.Println("  ███████ ███████ ██ █████      ██    ██")
+		fmt.Println("       ██ ██   ██ ██ ██         ██      ")
+		fmt.Println("  ███████ ██   ██ ██ ██         ██    ██")
 		fmt.Print(gd.Reset)
 	}
 }

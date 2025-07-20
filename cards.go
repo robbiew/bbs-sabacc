@@ -48,7 +48,7 @@ var ArcanaCards = []Card{
 	{Value: -17, Suit: "Arcana", Name: "Star"},
 }
 
-// String returns a string representation of the card
+// Also check that your cards.go has proper String() method:
 func (c Card) String() string {
 	if c.Suit == "Arcana" {
 		// Show arcana cards with their names abbreviated
@@ -85,6 +85,8 @@ func (c Card) String() string {
 			return "Id"
 		case "Star":
 			return "Sr"
+		default:
+			return "??"
 		}
 	}
 
@@ -159,6 +161,7 @@ func calculateHandTotal(hand []Card) int {
 	return total
 }
 
+// And ensure getCardColor() returns proper ANSI codes:
 func getCardColor(card Card) string {
 	switch card.Suit {
 	case SuitSabers:
