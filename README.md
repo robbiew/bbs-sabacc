@@ -1,213 +1,366 @@
-# BBS Sabacc
+# BBS Sabacc Installation Guide
 
-A classic 76-card Sabacc game implementation for BBS systems, written in Go using the godoors library.
+This guide will help you install and configure BBS Sabacc on your BBS system.
 
-## Features
+## Prerequisites
 
-- Classic Sabacc rules based on West End Games version
-- 76-card deck with four suits (Sabers, Flasks, Coins, Staves) and Arcana cards
-- Static Field mechanics to protect cards from Sabacc Shifts
-- Terminal-based interface optimized for BBS systems
-- ANSI color support with custom art
-- Idle timeout handling
-- Drop file support (door32.sys)
-- AI opponent with configurable personalities
+- Linux-based BBS system (Talisman, Mystic, Synchronet, ENiGMA½, WWIV)
+- Go 1.19 or later (for building from source)
+- ANSI terminal support
+- door32.sys drop file support
 
-## Requirements
+## Installation Methods
 
-- Go 1.19 or later (for building)
-- Linux-based BBS system (Talisman, Mystic, Synchronet, etc.)
-- ANSI terminal capability
-- door32.sys drop file
+### Method 1: Build from Source (Recommended)
 
-## Quick Start
-
-### Building from Source
-
-1. **Clone or download the source code**
-2. **Build the game:**
+1. **Download or clone the source code**
+2. **Navigate to the source directory:**
    ```bash
-   # Simple build
+   cd bbs-sabacc
+   ```
+3. **Build the game:**
+   ```bash
+   # Quick build
    go build -o sabacc .
    
-   # Optimized build (recommended)
+   # Optimized build (smaller executable)
    go build -ldflags="-s -w" -o sabacc .
    
    # Or use the build script
+   chmod +x build.sh
    ./build.sh
    ```
-
-3. **Test locally:**
-   ```bash
-   # Create test drop file
-   echo -e "2\n8\n38400\nTest BBS\n1\nTest Player\nTestUser\n100\n90\n0\n1" > door32.sys
-   
-   # Run the game
-   ./sabacc -path ./
-   ```
-
-### Installation on BBS
-
-1. **Copy to your BBS doors directory:**
+4. **Copy to your BBS doors directory:**
    ```bash
    cp sabacc /path/to/your/bbs/doors/
    chmod +x /path/to/your/bbs/doors/sabacc
    ```
 
-2. **Configure your BBS software** (see INSTALL.md for specific examples)
+### Method 2: Pre-built Binary (if available)
 
-## Game Rules
+1. Download the appropriate binary for your architecture
+2. Extract and copy to your doors directory:
+   ```bash
+   cp sabacc /path/to/your/bbs/doors/
+   chmod +x /path/to/your/bbs/doors/sabacc
+   ```
 
-### Objective
-Get as close to 23 points as possible without going over.
+## Testing Installation
 
-### Winning Hands
-- **Pure Sabacc**: Exactly 23 points (wins Sabacc Pot)
-- **Idiot's Array**: Idiot card + 2 + 3 (literal 23) - beats Pure Sabacc!
+Before configuring your BBS, test the game locally:
 
-### Bomb Out Conditions
-- Over 23 points
-- Under -23 points  
-- Exactly 0 points
-
-### Card Values
-- **Sabers, Flasks, Coins, Staves**: 1-15 points each
-- **Arcana Cards**: Negative values (-1 to -17)
-
-### Special Mechanics
-- **Sabacc Shift**: Random event (rolling doubles) that shuffles all hands
-- **Static Field**: Protect important cards from being shuffled during shifts
-- **Hand Pot**: Won by the best hand each round
-- **Sabacc Pot**: Only won with Pure Sabacc or Idiot's Array
-
-### Player Actions
-- **[D] Draw**: Take a card from the deck
-- **[T] Trade**: Discard a card and draw a new one
-- **[S] Stand**: Take no action
-- **[F] Static Field**: Place/remove cards for protection
-- **[C] Call**: End the hand (available after round 2)
-- **[Q] Fold**: Give up and pay penalty
-
-## File Structure
-
-### Required Files
-```
-main.go          # Core game logic
-cards.go         # Card and deck management
-helpers.go       # UI and utility functions
-go.mod          # Go module dependencies
-```
-
-### Optional Files
-```
-config.go        # Game configuration system
-main_test.go     # Test suite
-build.sh         # Build script
-README.md        # This file
-INSTALL.md       # Detailed installation guide
-ansi/            # ANSI art files
-├── title.ans    # Title screen
-├── menu.ans     # Menu background
-└── game.ans     # Game screen
-```
-
-## Development
-
-### Running Tests
 ```bash
-go test              # Run all tests
-go test -v           # Verbose output
-go test -cover       # With coverage report
+# Use the included sample drop file
+./sabacc -path ./
+
+# Or create a custom test drop file
+echo -e "2\n8\n38400\nTest BBS\n1\nTest Player\nTestUser\n100\n90\n0\n1" > door32.sys
+./sabacc -path ./
+
+# You should see the title screen and main menu
 ```
 
-### Building
-```bash
-# Development build
-go build -o sabacc .
-
-# Production build (smaller executable)
-go build -ldflags="-s -w" -o sabacc .
-
-# Using build script
-./build.sh
-```
-
-### Adding Features
-The codebase is modular and well-tested, making it easy to add new features:
-- AI personalities are configurable in `config.go`
-- Game rules are in `cards.go` and `main.go`
-- UI functions are in `helpers.go`
-- All major functions have tests in `main_test.go`
-
-## BBS Configuration Examples
+## BBS Configuration
 
 ### Talisman BBS
+
+Add to your `doors.toml` configuration:
+
 ```toml
 [[door]]
 name = "Sabacc"
 command = "/path/to/doors/sabacc -path %3"
 directory = "/path/to/doors/"
+type = "door"
 description = "Classic 76-Card Sabacc Game"
+access_level = 10
+time_limit = 30
+door32 = true
 ```
 
 ### Mystic BBS
+
+Configure in your door setup:
+
 ```
 Description  : Sabacc Card Game
+Access Level : 10
 Command Line : /path/to/doors/sabacc -path %3
+Optional Data: 
 Use Door32   : Yes
+Time Limit   : 30
+Native Exec  : No
+Modify User  : No
 ```
 
 ### Synchronet BBS
+
+Add to your `xtrn.ini` file:
+
 ```ini
 [Sabacc]
 Name=Sabacc Card Game
 Command Line=/path/to/doors/sabacc -path %g
+Multiple Concurrent Users=No
+Intercept Standard I/O=No
+Native (32-bit) Executable=No
+Use Shell to Execute=No
+Modify User Data=No
+Execute on Event=Logon
 BBS Drop File Type=Door32.sys
+Place Drop File In=Node Directory
+Time Options=Deduct from Time Online
+Access Requirements=
 ```
 
-See INSTALL.md for more detailed configuration examples.
+### ENiGMA½ BBS
+
+Add to your `menu.hjson` configuration:
+
+```hjson
+sabacc: {
+    desc: Sabacc Card Game
+    module: door
+    config: {
+        name: Sabacc
+        dropFileType: door32.sys
+        cmd: /path/to/doors/sabacc
+        args: [
+            "-path", "{dropFilePath}"
+        ]
+        cwd: /path/to/doors/
+    }
+}
+```
+
+### WWIV BBS
+
+Add to your `chains.ini` file:
+
+```ini
+[Chain]
+Description=Sabacc Card Game
+Filename=/path/to/doors/sabacc -path %1
+Local_only=false
+Multi_user=false
+Ansir=true
+Emulation=door32.sys
+```
+
+## Directory Structure
+
+Organize your installation as follows:
+
+```
+/path/to/doors/sabacc/
+├── sabacc              # Main executable
+├── ansi/               # ANSI art files (optional)
+│   ├── title.ans
+│   ├── menu.ans
+│   └── game.ans
+├── stats/              # Player statistics (auto-created)
+└── sabacc.conf         # Configuration file (auto-created)
+```
+
+## Configuration Files
+
+### Game Configuration (sabacc.conf)
+
+The game creates a configuration file automatically with these default settings:
+
+```json
+{
+  "min_ante": 10,
+  "max_ante": 100,
+  "max_bet": 500,
+  "starting_credits": 1000,
+  "shift_probability": 36,
+  "min_rounds_to_call": 2,
+  "idle_timeout_seconds": 300,
+  "enable_sound": true,
+  "enable_statistics": true,
+  "ai_personality": "balanced"
+}
+```
+
+### ANSI Art (Optional)
+
+Place custom ANSI art files in the `ansi/` directory:
+
+- **title.ans** - Title screen (displayed on startup)
+- **menu.ans** - Menu background  
+- **game.ans** - Game screen background
+
+Files should use standard ANSI escape sequences. The game includes built-in ASCII art if these files are missing.
+
+## Verification
+
+After installation, verify everything works:
+
+1. **Check file permissions:**
+   ```bash
+   ls -la /path/to/doors/sabacc
+   # Should show: -rwxr-xr-x (executable)
+   ```
+
+2. **Test from command line:**
+   ```bash
+   /path/to/doors/sabacc -path /tmp/
+   # Should show error about missing door32.sys (this is normal)
+   ```
+
+3. **Test through your BBS:**
+   - Log into your BBS
+   - Navigate to the doors/games menu
+   - Run Sabacc
+   - Verify it displays properly with ANSI colors
 
 ## Troubleshooting
 
 ### Common Issues
 
-**Build fails:**
-- Ensure Go 1.19+ is installed: `go version`
-- Check dependencies: `go mod tidy`
+**"No such file or directory" when running sabacc:**
+- Check that the executable exists and has proper permissions
+- Verify the path in your BBS configuration is correct
+- Ensure the executable was built for the correct architecture
 
-**Game doesn't start:**
-- Verify executable permissions: `chmod +x sabacc`
-- Check drop file path and format
-- Ensure ANSI terminal support
+**Game starts but shows format errors:**
+- Usually indicates a drop file format problem
+- Verify your BBS is creating door32.sys correctly
+- Check that the path parameter includes trailing slash
 
-**Display issues:**
-- Verify ANSI color support in terminal
-- Check terminal size (80x25 recommended)
-- Ensure proper drop file emulation setting
+**No ANSI colors:**
+- Verify the user's terminal supports ANSI
+- Check BBS emulation settings
+- Ensure door32.sys has emulation=1 for ANSI mode
 
-### Debug Mode
-Create a test environment:
+**Game crashes immediately:**
+- Check system logs for error messages
+- Verify Go runtime compatibility
+- Test with a manual drop file first
+
+### Debug Steps
+
+1. **Create test environment:**
+   ```bash
+   cd /path/to/doors/
+   # Use the included sample drop file or create one
+   echo -e "2\n8\n38400\nTest BBS\n1\nTest Player\nTestUser\n100\n90\n0\n1" > door32.sys
+   ./sabacc -path ./
+   ```
+
+2. **Check dependencies:**
+   ```bash
+   ldd sabacc  # Shows required libraries
+   ```
+
+3. **Verify drop file format:**
+   ```bash
+   cat door32.sys  # Should show 11 lines of data
+   ```
+
+### Performance Notes
+
+- **Memory usage**: ~5-10MB per instance
+- **CPU usage**: Minimal (single-threaded, event-driven)
+- **Disk usage**: <1MB plus statistics files
+- **Concurrent users**: Supported (separate processes)
+
+### Security Considerations
+
+- Runs with BBS user permissions
+- No network connections made
+- Statistics stored in plain JSON (not sensitive)
+- No user input validation beyond game rules
+
+## Maintenance
+
+### Updating
+
+To update to a new version:
+
+1. **Backup your data:**
+   ```bash
+   cp -r /path/to/doors/sabacc/stats/ ~/sabacc-backup/
+   cp /path/to/doors/sabacc/sabacc.conf ~/sabacc-backup/
+   ```
+
+2. **Replace executable:**
+   ```bash
+   # Build new version
+   go build -ldflags="-s -w" -o sabacc .
+   
+   # Stop BBS or disable door temporarily
+   # Replace executable
+   cp sabacc /path/to/doors/sabacc/
+   
+   # Restart BBS or re-enable door
+   ```
+
+3. **Restore configuration:**
+   ```bash
+   # Configuration files are forward-compatible
+   # Statistics files are preserved automatically
+   ```
+
+### Log Monitoring
+
+Monitor your BBS logs for any door-related errors:
+
 ```bash
-# Test drop file
-echo -e "2\n8\n38400\nTest BBS\n1\nTest Player\nTestUser\n100\n90\n0\n1" > door32.sys
-
-# Run with explicit path
-./sabacc -path ./
+# Common log locations
+tail -f /var/log/mystic/mis*.log     # Mystic BBS
+tail -f /enigma-bbs/logs/system.log  # ENiGMA½
+# Check your specific BBS documentation for log locations
 ```
 
-## Credits
+### Statistics Management
 
-- Based on Sabacc as created by West End Games
-- Uses the [godoors](https://github.com/robbiew/godoors) library by robbiew
-- Inspired by the web version at [compycore/sabacc](https://github.com/compycore/sabacc)
-- Star Wars universe by Lucasfilm Ltd.
+Player statistics are stored in `stats/` directory as JSON files:
 
-## License
+```bash
+# View player stats
+ls -la stats/
+cat stats/player_name.json
 
-Released under MIT License. See LICENSE file for details.
+# Backup all statistics
+tar -czf sabacc-stats-backup.tar.gz stats/
 
-## Contributing
+# Reset a player's stats (delete their file)
+rm stats/player_name.json
+```
 
-Feel free to submit issues, suggestions, or pull requests to improve the game. The test suite helps ensure changes don't break existing functionality.
+## Advanced Configuration
 
-*"Never tell me the odds!" - Han Solo*
+### Custom AI Personalities
+
+Edit `sabacc.conf` to adjust AI behavior:
+
+- **"conservative"** - Cautious, folds early, uses static field often
+- **"balanced"** - Default reasonable behavior
+- **"aggressive"** - Risk-taking, draws more cards, folds less
+
+### Credit Economy
+
+Adjust starting credits and limits to match your BBS economy:
+
+```json
+{
+  "starting_credits": 500,    # Lower for tighter economy
+  "min_ante": 5,             # Minimum bet
+  "max_ante": 50,            # Maximum bet
+  "max_bet": 200             # Betting limit
+}
+```
+
+### Time Limits
+
+Set appropriate idle timeouts:
+
+```json
+{
+  "idle_timeout_seconds": 300  # 5 minutes default
+}
+```
+
+This completes the installation guide. Your BBS should now be ready to offer Classic Sabacc to your users!
