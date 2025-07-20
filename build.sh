@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Build script for BBS Sabacc
 # This script builds the game for Linux BBS systems

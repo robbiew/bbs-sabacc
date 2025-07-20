@@ -259,7 +259,6 @@ func handleTradeCard() {
 }
 
 func handleStaticField() {
-	player := &game.Players[0]
 
 	gd.ClearScreen()
 	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)

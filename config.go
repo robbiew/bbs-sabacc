@@ -218,7 +218,7 @@ func GetAIPersonality(personalityType string) AIPersonality {
 			DrawThreshold:        15,
 			StandThreshold:       20,
 			CallThreshold:        18,
-			FoldThreshold:        25,
+			FoldThreshold:        22, // Lower threshold = fold earlier
 			StaticFieldChance:    0.8,
 			AggressivenessFactor: 0.7,
 		}
@@ -228,7 +228,7 @@ func GetAIPersonality(personalityType string) AIPersonality {
 			DrawThreshold:        18,
 			StandThreshold:       22,
 			CallThreshold:        20,
-			FoldThreshold:        30,
+			FoldThreshold:        28, // Higher threshold = fold later
 			StaticFieldChance:    0.3,
 			AggressivenessFactor: 1.5,
 		}
@@ -238,7 +238,7 @@ func GetAIPersonality(personalityType string) AIPersonality {
 			DrawThreshold:        16,
 			StandThreshold:       21,
 			CallThreshold:        19,
-			FoldThreshold:        27,
+			FoldThreshold:        25, // Middle ground
 			StaticFieldChance:    0.5,
 			AggressivenessFactor: 1.0,
 		}

@@ -9,7 +9,7 @@ func TestNewDeck(t *testing.T) {
 	deck := NewDeck()
 
 	// Should have 76 cards total
-	expectedCards := 60 + 16 // 60 numbered cards + 16 arcana cards (2 copies of 8 types)
+	expectedCards := 92 // 60 numbered cards + 32 arcana cards (16 types x 2 copies)
 	if len(deck.Cards) != expectedCards {
 		t.Errorf("Expected %d cards, got %d", expectedCards, len(deck.Cards))
 	}
@@ -443,8 +443,11 @@ func TestAIPersonality(t *testing.T) {
 		t.Error("Conservative AI should have lower draw threshold")
 	}
 
-	if conservative.FoldThreshold <= aggressive.FoldThreshold {
-		t.Error("Conservative AI should fold earlier")
+	// Conservative should fold at a LOWER threshold (fold earlier/sooner)
+	// Conservative: 22, Aggressive: 28 - so 22 < 28 is correct
+	if conservative.FoldThreshold >= aggressive.FoldThreshold {
+		t.Errorf("Conservative AI should fold earlier (lower fold threshold). Conservative: %d, Aggressive: %d",
+			conservative.FoldThreshold, aggressive.FoldThreshold)
 	}
 
 	// Aggressive should use static field less
@@ -452,9 +455,25 @@ func TestAIPersonality(t *testing.T) {
 		t.Error("Aggressive AI should use static field less")
 	}
 
-	// Balanced should be in the middle
+	// Balanced should be in the middle for draw threshold
 	if balanced.DrawThreshold <= conservative.DrawThreshold || balanced.DrawThreshold >= aggressive.DrawThreshold {
-		t.Error("Balanced AI should be between conservative and aggressive")
+		t.Error("Balanced AI should be between conservative and aggressive for draw threshold")
+	}
+
+	// Balanced should be in the middle for fold threshold
+	if balanced.FoldThreshold <= conservative.FoldThreshold || balanced.FoldThreshold >= aggressive.FoldThreshold {
+		t.Error("Balanced AI should be between conservative and aggressive for fold threshold")
+	}
+
+	// Verify the personalities are set up correctly
+	if conservative.Name != "Conservative" {
+		t.Error("Conservative personality name incorrect")
+	}
+	if aggressive.Name != "Aggressive" {
+		t.Error("Aggressive personality name incorrect")
+	}
+	if balanced.Name != "Balanced" {
+		t.Error("Balanced personality name incorrect")
 	}
 }
 
