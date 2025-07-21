@@ -110,24 +110,14 @@ func showTitleScreen() {
 	gd.ClearScreen()
 	gd.MoveCursor(0, 0)
 
-	// Center title text
+	// Show the sabacc ASCII art instead of the simple text title
 	centerY := game.User.H / 2
-	gd.MoveCursor(1, centerY-3)
-	fmt.Print(gd.YellowHi + "███████  █████  ██████   █████   ██████  ██████" + gd.Reset)
-	gd.MoveCursor(1, centerY-2)
-	fmt.Print(gd.YellowHi + "██      ██   ██ ██   ██ ██   ██ ██      ██" + gd.Reset)
-	gd.MoveCursor(1, centerY-1)
-	fmt.Print(gd.YellowHi + "███████ ███████ ██████  ███████ ██      ██" + gd.Reset)
-	gd.MoveCursor(1, centerY)
-	fmt.Print(gd.YellowHi + "     ██ ██   ██ ██   ██ ██   ██ ██      ██" + gd.Reset)
-	gd.MoveCursor(1, centerY+1)
-	fmt.Print(gd.YellowHi + "███████ ██   ██ ██████  ██   ██  ██████  ██████" + gd.Reset)
+	gd.MoveCursor(1, centerY-6)
+	displayAsciiArt("sabacc")
 
-	gd.MoveCursor(1, centerY+3)
+	gd.MoveCursor(1, centerY+2)
 	fmt.Print(gd.Cyan + "Classic 76-Card Sabacc for BBS" + gd.Reset)
 	gd.MoveCursor(1, centerY+4)
-	fmt.Print(gd.White + "West End Games Rules (1989)" + gd.Reset)
-	gd.MoveCursor(1, centerY+6)
 	fmt.Print(gd.White + "Welcome, " + gd.CyanHi + game.User.Alias + gd.Reset)
 
 	gd.MoveCursor(1, game.User.H-2)
@@ -231,9 +221,6 @@ func gameLoop() {
 	game.Turn = 1 // Start with player after dealer
 
 	for !game.GameOver {
-		// Check if minimum rounds completed for calling
-		canCall := game.Round >= game.MinRounds
-
 		displayGameScreen()
 
 		// Check if only one player remains (others folded)
@@ -246,23 +233,63 @@ func gameLoop() {
 			}
 		}
 
-		// If only one player left, they win
+		// If only one player left, they win immediately
 		if activePlayers <= 1 {
 			if lastActivePlayer >= 0 {
 				fmt.Printf("\n%s%s wins by default (others folded)!%s\n",
 					gd.GreenHi, game.Players[lastActivePlayer].Name, gd.Reset)
 				game.Players[lastActivePlayer].Credits += game.HandPot
-				time.Sleep(2 * time.Second)
+
+				// Check if they also get Sabacc pot (if they have special hand)
+				if !game.Players[lastActivePlayer].Folded {
+					total := calculateHandTotal(game.Players[lastActivePlayer].Hand)
+					if total == 23 {
+						fmt.Printf("%s%s also wins the Sabacc Pot! (Pure Sabacc)%s\n",
+							gd.GreenHi, game.Players[lastActivePlayer].Name, gd.Reset)
+						game.Players[lastActivePlayer].Credits += game.SabaccPot
+						game.SabaccPot = 0
+						displayAsciiArt("sabacc")
+					} else if isIdiotsArray(game.Players[lastActivePlayer].Hand) {
+						fmt.Printf("%s%s also wins the Sabacc Pot! (Idiot's Array)%s\n",
+							gd.GreenHi, game.Players[lastActivePlayer].Name, gd.Reset)
+						game.Players[lastActivePlayer].Credits += game.SabaccPot
+						game.SabaccPot = 0
+						displayAsciiArt("sabacc")
+					}
+				}
+
+				time.Sleep(3 * time.Second)
 			}
 			game.GameOver = true
-			break
+			break // Exit the game loop immediately
 		}
 
-		// PLAYER TURN - 4 phases: Bet, Roll, Call, Draw
+		// Check if current player is folded and skip their turn
+		if game.Players[game.Turn].Folded {
+			nextTurn()
+			continue
+		}
+
 		if game.Turn == 0 { // Human player
-			handlePlayerTurn(canCall)
+			// Only process turn if player hasn't folded
+			if !game.Players[0].Folded {
+				handlePlayerTurn()
+			} else {
+				// Player folded, skip to next turn
+				nextTurn()
+				continue
+			}
 		} else { // Computer player
-			handleComputerTurn(canCall)
+			// Only process turn if computer hasn't folded
+			if !game.Players[game.Turn].Folded {
+				// Computer can call if it's round 2 or later
+				canCall := game.Round >= 2
+				handleComputerTurn(canCall)
+			} else {
+				// Computer folded, skip to next turn
+				nextTurn()
+				continue
+			}
 		}
 
 		// Check for game end conditions
@@ -279,24 +306,61 @@ func gameLoop() {
 	waitForKey()
 }
 
-func handlePlayerTurn(canCall bool) {
+// Also fix the handlePlayerTurn function to properly handle folding
+func handlePlayerTurn() {
 	fmt.Println()
-	fmt.Printf("%s=== %s's Turn ===%s\n", gd.CyanHi, game.Players[game.Turn].Name, gd.Reset)
+	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "D" + gd.Yellow + "] " + gd.White + "Draw card\n" + gd.Reset)
+	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "T" + gd.Yellow + "] " + gd.White + "Trade card\n" + gd.Reset)
+	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "S" + gd.Yellow + "] " + gd.White + "Stand (do nothing)\n" + gd.Reset)
+	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "F" + gd.Yellow + "] " + gd.White + "Place card in Static Field\n" + gd.Reset)
+	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "C" + gd.Yellow + "] " + gd.White + "Call hand\n" + gd.Reset)
+	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "Q" + gd.Yellow + "] " + gd.White + "Fold\n\n" + gd.Reset)
+	fmt.Print(gd.Green + "Choice: " + gd.Reset)
 
-	// PHASE 1: BET
-	handleBettingPhase()
-
-	// PHASE 2: ROLL (for Sabacc Shift)
-	rollForShift()
-
-	// PHASE 3: CALL (allow others to call)
-	if canCall {
-		handleCallPhase()
+	char, _, err := getKeyWithTimeout()
+	if err != nil {
+		return
 	}
 
-	// PHASE 4: DRAW
-	if !game.Called {
-		handleDrawPhase()
+	playerRef := &game.Players[0]
+
+	switch char {
+	case 'd', 'D':
+		if len(game.Deck.Cards) > 0 {
+			card := game.Deck.Deal()
+			playerRef.Hand = append(playerRef.Hand, card)
+			fmt.Printf("\n%sYou drew: %s[%s]%s\n", gd.Green, getCardColor(card), card.String(), gd.Reset)
+			time.Sleep(1 * time.Second)
+		}
+	case 't', 'T':
+		handleTradeCard()
+	case 's', 'S':
+		fmt.Printf("\n%sYou stand.%s\n", gd.Green, gd.Reset)
+		time.Sleep(1 * time.Second)
+	case 'f', 'F':
+		handleStaticField()
+	case 'c', 'C':
+		if game.Round >= 2 { // Can only call after round 2
+			game.Called = true
+			fmt.Printf("\n%sYou called the hand!%s\n", gd.GreenHi, gd.Reset)
+			time.Sleep(1 * time.Second)
+			return // Don't continue with dice roll when calling
+		} else {
+			fmt.Printf("\n%sCannot call until round 2!%s\n", gd.Red, gd.Reset)
+			time.Sleep(1 * time.Second)
+		}
+	case 'q', 'Q':
+		playerRef.Folded = true
+		playerRef.Credits -= 1 // Fold penalty
+		game.SabaccPot += 1
+		fmt.Printf("\n%sYou folded.%s\n", gd.Red, gd.Reset)
+		time.Sleep(1 * time.Second)
+		return // Don't continue with dice roll when folding
+	}
+
+	// Only roll dice if player didn't fold or call
+	if !playerRef.Folded && !game.Called {
+		rollForShift()
 	}
 }
 
@@ -579,6 +643,7 @@ func resolveHand() {
 	winner := -1
 	bestScore := -999
 	sabaccWinner := -1
+	bombedOutPlayers := []int{}
 
 	for i, playerData := range game.Players {
 		if playerData.Folded {
@@ -595,44 +660,78 @@ func resolveHand() {
 
 		// Check for special hands (Sabacc Pot winners)
 		if isIdiotsArray(playerData.Hand) {
-			fmt.Printf(" %s(IDIOT'S ARRAY!)%s", gd.GreenHi, gd.Reset)
-			sabaccWinner = i // Idiot's Array beats Pure Sabacc
+			fmt.Printf(" %s(IDIOT'S ARRAY!)%s\n", gd.GreenHi, gd.Reset)
+			displayAsciiArt("sabacc") // Show sabacc art for special hands
+			bestScore = 1000
+			sabaccWinner = i            // Idiot's Array beats Pure Sabacc
+			time.Sleep(3 * time.Second) // Let player see the art
 		} else if total == 23 && sabaccWinner == -1 {
-			fmt.Printf(" %s(PURE SABACC!)%s", gd.GreenHi, gd.Reset)
+			fmt.Printf(" %s(PURE SABACC!)%s\n", gd.GreenHi, gd.Reset)
+			displayAsciiArt("sabacc") // Show sabacc art for Pure Sabacc
 			sabaccWinner = i
+			time.Sleep(3 * time.Second) // Let player see the art
 		} else if total > 23 || total < -23 || total == 0 {
-			fmt.Printf(" %s(BOMBED OUT!)%s", gd.Red, gd.Reset)
+			fmt.Printf(" %s(BOMBED OUT!)%s\n", gd.Red, gd.Reset)
+			displayAsciiArt("bomb") // Show bomb art for bomb outs
 			game.Players[i].BombedOut = true
+			bombedOutPlayers = append(bombedOutPlayers, i)
 			// Bombed out player pays Hand Pot amount to Sabacc Pot
 			penalty := game.HandPot
 			game.Players[i].Credits -= penalty
 			game.SabaccPot += penalty
+			time.Sleep(2 * time.Second) // Let player see the bomb art
 		} else if total <= 23 && total > bestScore {
 			winner = i
 			bestScore = total
+			fmt.Println()
+		} else {
+			fmt.Println()
 		}
-		fmt.Println()
 	}
 
 	fmt.Println()
 
-	// Award Sabacc Pot if applicable
+	// Determine winners and distribute pots
 	if sabaccWinner >= 0 {
-		fmt.Printf("%s%s wins the Sabacc Pot! (+%d credits)%s\n",
-			gd.GreenHi, game.Players[sabaccWinner].Name, game.SabaccPot, gd.Reset)
-		game.Players[sabaccWinner].Credits += game.SabaccPot
-		game.SabaccPot = 0
-		winner = sabaccWinner // Sabacc also wins hand pot
-	}
+		// Someone won with Pure Sabacc or Idiot's Array
+		fmt.Printf("%s%s wins both pots with a special hand!%s\n",
+			gd.GreenHi, game.Players[sabaccWinner].Name, gd.Reset)
+		fmt.Printf("%s+%d credits (Hand Pot) +%d credits (Sabacc Pot)%s\n",
+			gd.GreenHi, game.HandPot, game.SabaccPot, gd.Reset)
 
-	// Award Hand Pot
-	if winner >= 0 {
-		fmt.Printf("%s%s wins the Hand Pot! (+%d credits)%s\n",
+		game.Players[sabaccWinner].Credits += game.HandPot + game.SabaccPot
+		game.SabaccPot = 0 // Reset Sabacc pot
+
+		// Display celebration art one more time
+		displayAsciiArt("sabacc")
+		time.Sleep(2 * time.Second)
+
+	} else if winner >= 0 {
+		// Regular hand winner
+		fmt.Printf("%s%s wins the hand! (+%d credits)%s\n",
 			gd.GreenHi, game.Players[winner].Name, game.HandPot, gd.Reset)
 		game.Players[winner].Credits += game.HandPot
+
 	} else {
+		// Everyone bombed out or folded
 		fmt.Printf("%sNo winner! Hand pot goes to Sabacc pot.%s\n", gd.Yellow, gd.Reset)
 		game.SabaccPot += game.HandPot
+
+		// Show bomb art for the chaos
+		if len(bombedOutPlayers) > 1 {
+			fmt.Printf("\n%sEveryone bombed out!%s\n", gd.RedHi, gd.Reset)
+			displayAsciiArt("bomb")
+			time.Sleep(2 * time.Second)
+		}
+	}
+
+	// Show penalty summary if anyone bombed out
+	if len(bombedOutPlayers) > 0 {
+		fmt.Printf("\n%sBomb Out Penalties:%s\n", gd.Red, gd.Reset)
+		for _, playerIndex := range bombedOutPlayers {
+			fmt.Printf("%s%s paid %d credits to Sabacc Pot%s\n",
+				gd.Red, game.Players[playerIndex].Name, game.HandPot, gd.Reset)
+		}
 	}
 
 	game.GameOver = true
