@@ -296,3 +296,16 @@ func displayAsciiArt(artType string) {
 		fmt.Print(gd.Reset)
 	}
 }
+
+// Debug function to help identify the formatting issues
+func debugGameState() {
+	fmt.Printf("DEBUG: HandPot type: %T, value: %v\n", game.HandPot, game.HandPot)
+	fmt.Printf("DEBUG: SabaccPot type: %T, value: %v\n", game.SabaccPot, game.SabaccPot)
+	fmt.Printf("DEBUG: Round type: %T, value: %v\n", game.Round, game.Round)
+
+	if len(game.Players) > 0 {
+		fmt.Printf("DEBUG: Player credits type: %T, value: %v\n",
+			game.Players[0].Credits, game.Players[0].Credits)
+		fmt.Printf("DEBUG: Player hand length: %d\n", len(game.Players[0].Hand))
+	}
+}

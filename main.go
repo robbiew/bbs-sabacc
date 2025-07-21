@@ -711,18 +711,6 @@ func displayGameScreen() {
 		gd.Magenta, gd.MagentaHi, len(game.Deck.Cards), gd.Reset)
 }
 
-// Debug function to check variable types
-func debugGameState() {
-	fmt.Printf("DEBUG: HandPot type: %T, value: %v\n", game.HandPot, game.HandPot)
-	fmt.Printf("DEBUG: SabaccPot type: %T, value: %v\n", game.SabaccPot, game.SabaccPot)
-	fmt.Printf("DEBUG: Round type: %T, value: %v\n", game.Round, game.Round)
-
-	if len(game.Players) > 0 {
-		fmt.Printf("DEBUG: Player credits type: %T, value: %v\n",
-			game.Players[0].Credits, game.Players[0].Credits)
-	}
-}
-
 func showGameResults() {
 	fmt.Println()
 	fmt.Printf("%sFinal Credits:%s\n", gd.CyanHi, gd.Reset)

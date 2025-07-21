@@ -175,6 +175,8 @@ func getCardColor(card Card) string {
 	case "Arcana":
 		return gd.Magenta
 	default:
+		// Debug: print unknown suit
+		fmt.Printf("[DEBUG] Unknown suit: '%s'\n", card.Suit)
 		return gd.White
 	}
 }
