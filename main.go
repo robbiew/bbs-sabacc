@@ -332,6 +332,41 @@ func handleBettingPhase() {
 		game.SabaccPot += 1
 		fmt.Printf("\n%sYou folded.%s\n", gd.Red, gd.Reset)
 		time.Sleep(1 * time.Second)
+
+		// Check if only one player remains after folding
+		checkForGameEnd()
+	}
+}
+
+// Add this helper function to check if game should end
+func checkForGameEnd() {
+	activePlayers := 0
+	lastActivePlayer := -1
+
+	for i, player := range game.Players {
+		if !player.Folded {
+			activePlayers++
+			lastActivePlayer = i
+		}
+	}
+
+	// If only one player left, they win immediately
+	if activePlayers <= 1 {
+		if lastActivePlayer >= 0 {
+			fmt.Printf("\n%s%s wins by default (others folded)!%s\n",
+				gd.GreenHi, game.Players[lastActivePlayer].Name, gd.Reset)
+			game.Players[lastActivePlayer].Credits += game.HandPot
+
+			// Also award Sabacc pot if it exists
+			if game.SabaccPot > 0 {
+				fmt.Printf("%s%s also wins the Sabacc Pot! (+%d credits)%s\n",
+					gd.GreenHi, game.Players[lastActivePlayer].Name, game.SabaccPot, gd.Reset)
+				game.Players[lastActivePlayer].Credits += game.SabaccPot
+			}
+
+			time.Sleep(2 * time.Second)
+		}
+		game.GameOver = true
 	}
 }
 
@@ -603,8 +638,6 @@ func resolveHand() {
 	game.GameOver = true
 }
 
-// Add these fixes to your displayGameScreen() function in main.go
-
 func displayGameScreen() {
 	gd.ClearScreen()
 	gd.MoveCursor(0, 0)
@@ -626,9 +659,7 @@ func displayGameScreen() {
 	if game.GameOver || game.Called {
 		// Show opponent's actual cards
 		for _, card := range opponent.Hand {
-			color := getCardColor(card)
-			cardStr := card.String()
-			fmt.Printf("%s[%s]%s ", color, cardStr, gd.Reset)
+			fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
 		}
 		total := calculateHandTotal(opponent.Hand)
 		fmt.Printf("  %sTotal:%s %s%d%s",
@@ -646,9 +677,7 @@ func displayGameScreen() {
 	if len(opponent.StaticField) > 0 {
 		fmt.Printf("%s%s's Static Field:%s ", gd.Magenta, opponent.Name, gd.Reset)
 		for _, card := range opponent.StaticField {
-			color := getCardColor(card)
-			cardStr := card.String()
-			fmt.Printf("%s[%s]%s ", color, cardStr, gd.Reset)
+			fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
 		}
 		fmt.Println()
 	}
@@ -660,25 +689,18 @@ func displayGameScreen() {
 	fmt.Printf("%sYour Hand:%s ", gd.Cyan, gd.Reset)
 	total := 0
 	for _, card := range playerHand.Hand {
-		color := getCardColor(card)
-		cardStr := card.String()
-		fmt.Printf("%s[%s]%s ", color, cardStr, gd.Reset)
+		fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
 		total += card.Value
 	}
-
-	// Fix the hand value display
-	handValueStr := formatHandValue(total)
-	fmt.Printf("  %sTotal:%s %s  %sCredits:%s %s%d%s\n",
-		gd.Yellow, gd.Reset, handValueStr,
+	fmt.Printf("  %sTotal:%s %s%d%s  %sCredits:%s %s%d%s\n",
+		gd.Yellow, gd.Reset, displayHandValue(total), gd.Reset,
 		gd.Yellow, gd.Reset, gd.YellowHi, playerHand.Credits, gd.Reset)
 
 	// Display player's static field if any
 	if len(playerHand.StaticField) > 0 {
 		fmt.Printf("%sYour Static Field:%s ", gd.Magenta, gd.Reset)
 		for _, card := range playerHand.StaticField {
-			color := getCardColor(card)
-			cardStr := card.String()
-			fmt.Printf("%s[%s]%s ", color, cardStr, gd.Reset)
+			fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
 		}
 		fmt.Println()
 	}
@@ -700,21 +722,6 @@ func displayGameScreen() {
 	// Show deck info
 	fmt.Printf("%sDeck:%s %s%d cards remaining%s\n",
 		gd.Magenta, gd.Reset, gd.MagentaHi, len(game.Deck.Cards), gd.Reset)
-}
-
-// Add this helper function to properly format hand values
-func formatHandValue(total int) string {
-	if total == 23 {
-		return gd.GreenHi + "23 (SABACC!)" + gd.Reset
-	} else if total > 23 || total < -23 || total == 0 {
-		return gd.RedHi + fmt.Sprintf("%d (BOMB!)", total) + gd.Reset
-	} else if total >= 20 && total <= 22 {
-		return gd.YellowHi + fmt.Sprintf("%d", total) + gd.Reset
-	} else if total >= -22 && total <= -20 {
-		return gd.YellowHi + fmt.Sprintf("%d", total) + gd.Reset
-	} else {
-		return gd.White + fmt.Sprintf("%d", total) + gd.Reset
-	}
 }
 
 func showGameResults() {

@@ -53,15 +53,15 @@ func DefaultConfig() GameConfig {
 	}
 }
 
-// LoadConfig loads configuration from file or creates default
+// LoadConfig loads configuration from file, uses defaults if file doesn't exist
 func LoadConfig() GameConfig {
 	configFile := "sabacc.conf"
-	config := DefaultConfig()
+	config := DefaultConfig() // Start with defaults
 
 	data, err := os.ReadFile(configFile)
 	if err != nil {
-		// Create default config file
-		SaveConfig(config)
+		// File doesn't exist or can't be read - just use defaults
+		fmt.Printf("Config file not found, using defaults\n")
 		return config
 	}
 
@@ -71,6 +71,10 @@ func LoadConfig() GameConfig {
 		return DefaultConfig()
 	}
 
+	// Validate the loaded config to ensure sane values
+	ValidateConfig(&config)
+
+	fmt.Printf("Loaded configuration from %s\n", configFile)
 	return config
 }
 
