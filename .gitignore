@@ -1,6 +1,6 @@
 # If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -8,11 +8,23 @@
 *.so
 *.dylib
 
+# Linux binaries (executables without extension)
+sabacc
+
+# Alternative: ignore all files without extension that are executable
+# This is more aggressive but catches most Linux binaries
+# Comment out the specific names above and uncomment this if you prefer:
+# *
+# !*/
+# !*.*
+
 # Test binary, built with `go test -c`
 *.test
 
-# Code coverage profiles and other test artifacts
+# Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# Code coverage profiles and other test artifacts
 coverage.*
 *.coverprofile
 profile.cov
@@ -24,9 +36,40 @@ profile.cov
 go.work
 go.work.sum
 
-# env file
+# Environment file
 .env
 
-# Editor/IDE
-# .idea/
-# .vscode/
+# Build directories
+build/
+dist/
+bin/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor/IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Runtime files
+*.pid
+*.seed
+*.pid.lock
+
+# Project-specific ignores
+door32.sys
+stats/
+*.conf
+ansi/*.ans
