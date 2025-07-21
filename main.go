@@ -638,6 +638,8 @@ func resolveHand() {
 	game.GameOver = true
 }
 
+// Fixed display functions for Sabacc game
+
 func displayGameScreen() {
 	gd.ClearScreen()
 	gd.MoveCursor(0, 0)
@@ -647,62 +649,52 @@ func displayGameScreen() {
 	fmt.Print(gd.CyanHi + "                SABACC GAME\n" + gd.Reset)
 	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
 
-	// Pot information
+	// Pot information - Fix: ensure all values are integers
 	fmt.Printf("%sHand Pot:%s %s%d%s    %sSabacc Pot:%s %s%d%s    %sRound:%s %s%d%s\n\n",
 		gd.Yellow, gd.Reset, gd.YellowHi, game.HandPot, gd.Reset,
 		gd.Yellow, gd.Reset, gd.YellowHi, game.SabaccPot, gd.Reset,
 		gd.Yellow, gd.Reset, gd.YellowHi, game.Round, gd.Reset)
 
-	// Display opponent's hand (face down unless game over)
-	opponent := &game.Players[1]
-	fmt.Printf("%s%s's Hand:%s ", gd.Cyan, opponent.Name, gd.Reset)
-	if game.GameOver || game.Called {
-		// Show opponent's actual cards
-		for _, card := range opponent.Hand {
-			fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
-		}
-		total := calculateHandTotal(opponent.Hand)
-		fmt.Printf("  %sTotal:%s %s%d%s",
-			gd.Yellow, gd.Reset, gd.YellowHi, total, gd.Reset)
-	} else {
-		// Show face down cards
+	// Display opponent's hand (face down)
+	if len(game.Players) > 1 {
+		opponent := &game.Players[1]
+		fmt.Printf("%s%s's Hand:%s ", gd.Cyan, opponent.Name, gd.Reset)
 		for i := 0; i < len(opponent.Hand); i++ {
 			fmt.Printf("%s[??]%s ", gd.Red, gd.Reset)
 		}
+		fmt.Printf("  %sCredits:%s %s%d%s\n\n",
+			gd.Yellow, gd.Reset, gd.YellowHi, opponent.Credits, gd.Reset)
 	}
-	fmt.Printf("  %sCredits:%s %s%d%s\n",
-		gd.Yellow, gd.Reset, gd.YellowHi, opponent.Credits, gd.Reset)
 
-	// Show opponent's static field if any
-	if len(opponent.StaticField) > 0 {
-		fmt.Printf("%s%s's Static Field:%s ", gd.Magenta, opponent.Name, gd.Reset)
-		for _, card := range opponent.StaticField {
+	// Display player's hand - Fix: ensure proper card display and total calculation
+	if len(game.Players) > 0 {
+		playerHand := &game.Players[0]
+		fmt.Printf("%sYour Hand:%s ", gd.Cyan, gd.Reset)
+
+		// Calculate total while displaying cards
+		total := 0
+		for _, card := range playerHand.Hand {
 			fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
+			total += card.Value
 		}
-		fmt.Println()
-	}
 
-	fmt.Println()
-
-	// Display player's hand
-	playerHand := &game.Players[0]
-	fmt.Printf("%sYour Hand:%s ", gd.Cyan, gd.Reset)
-	total := 0
-	for _, card := range playerHand.Hand {
-		fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
-		total += card.Value
-	}
-	fmt.Printf("  %sTotal:%s %s%d%s  %sCredits:%s %s%d%s\n",
-		gd.Yellow, gd.Reset, displayHandValue(total), gd.Reset,
-		gd.Yellow, gd.Reset, gd.YellowHi, playerHand.Credits, gd.Reset)
-
-	// Display player's static field if any
-	if len(playerHand.StaticField) > 0 {
-		fmt.Printf("%sYour Static Field:%s ", gd.Magenta, gd.Reset)
+		// Add static field cards to total
 		for _, card := range playerHand.StaticField {
-			fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
+			total += card.Value
 		}
-		fmt.Println()
+
+		fmt.Printf("  %sTotal:%s %s%d%s  %sCredits:%s %s%d%s\n\n",
+			gd.Yellow, gd.Reset, displayHandValue(total), total, gd.Reset,
+			gd.Yellow, gd.Reset, gd.YellowHi, playerHand.Credits, gd.Reset)
+
+		// Display static field if any
+		if len(playerHand.StaticField) > 0 {
+			fmt.Printf("%sStatic Field:%s ", gd.Magenta, gd.Reset)
+			for _, card := range playerHand.StaticField {
+				fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
+			}
+			fmt.Println()
+		}
 	}
 
 	fmt.Println()
@@ -710,18 +702,25 @@ func displayGameScreen() {
 	// Show whose turn it is
 	if game.Turn == 0 {
 		fmt.Print(gd.GreenHi + "YOUR TURN\n" + gd.Reset)
-	} else {
+	} else if len(game.Players) > game.Turn {
 		fmt.Printf("%s%s's turn...%s\n", gd.YellowHi, game.Players[game.Turn].Name, gd.Reset)
 	}
 
-	// Show current bet if any
-	if game.CurrentBet > 0 {
-		fmt.Printf("%sCurrent Bet:%s %s%d%s\n", gd.Yellow, gd.Reset, gd.YellowHi, game.CurrentBet, gd.Reset)
-	}
+	// Show remaining deck info
+	fmt.Printf("%sDeck: %s%d cards remaining%s\n",
+		gd.Magenta, gd.MagentaHi, len(game.Deck.Cards), gd.Reset)
+}
 
-	// Show deck info
-	fmt.Printf("%sDeck:%s %s%d cards remaining%s\n",
-		gd.Magenta, gd.Reset, gd.MagentaHi, len(game.Deck.Cards), gd.Reset)
+// Debug function to check variable types
+func debugGameState() {
+	fmt.Printf("DEBUG: HandPot type: %T, value: %v\n", game.HandPot, game.HandPot)
+	fmt.Printf("DEBUG: SabaccPot type: %T, value: %v\n", game.SabaccPot, game.SabaccPot)
+	fmt.Printf("DEBUG: Round type: %T, value: %v\n", game.Round, game.Round)
+
+	if len(game.Players) > 0 {
+		fmt.Printf("DEBUG: Player credits type: %T, value: %v\n",
+			game.Players[0].Credits, game.Players[0].Credits)
+	}
 }
 
 func showGameResults() {
