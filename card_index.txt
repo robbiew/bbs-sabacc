@@ -1,0 +1,104 @@
+SABACC CARD DATABASE INDEX
+==========================
+
+Card ID  | Value | Suit      | Name
+---------|-------|-----------|------------------
++1S      |     1 | Sabers    | 1 of Sabers
++2S      |     2 | Sabers    | 2 of Sabers
++3S      |     3 | Sabers    | 3 of Sabers
++4S      |     4 | Sabers    | 4 of Sabers
++5S      |     5 | Sabers    | 5 of Sabers
++6S      |     6 | Sabers    | 6 of Sabers
++7S      |     7 | Sabers    | 7 of Sabers
++8S      |     8 | Sabers    | 8 of Sabers
++9S      |     9 | Sabers    | 9 of Sabers
++10S     |    10 | Sabers    | 10 of Sabers
++11S     |    11 | Sabers    | 11 of Sabers
++12S     |    12 | Sabers    | 12 of Sabers
++13S     |    13 | Sabers    | 13 of Sabers
++14S     |    14 | Sabers    | 14 of Sabers
++15S     |    15 | Sabers    | 15 of Sabers
++1F      |     1 | Flasks    | 1 of Flasks
++2F      |     2 | Flasks    | 2 of Flasks
++3F      |     3 | Flasks    | 3 of Flasks
++4F      |     4 | Flasks    | 4 of Flasks
++5F      |     5 | Flasks    | 5 of Flasks
++6F      |     6 | Flasks    | 6 of Flasks
++7F      |     7 | Flasks    | 7 of Flasks
++8F      |     8 | Flasks    | 8 of Flasks
++9F      |     9 | Flasks    | 9 of Flasks
++10F     |    10 | Flasks    | 10 of Flasks
++11F     |    11 | Flasks    | 11 of Flasks
++12F     |    12 | Flasks    | 12 of Flasks
++13F     |    13 | Flasks    | 13 of Flasks
++14F     |    14 | Flasks    | 14 of Flasks
++15F     |    15 | Flasks    | 15 of Flasks
++1C      |     1 | Coins     | 1 of Coins
++2C      |     2 | Coins     | 2 of Coins
++3C      |     3 | Coins     | 3 of Coins
++4C      |     4 | Coins     | 4 of Coins
++5C      |     5 | Coins     | 5 of Coins
++6C      |     6 | Coins     | 6 of Coins
++7C      |     7 | Coins     | 7 of Coins
++8C      |     8 | Coins     | 8 of Coins
++9C      |     9 | Coins     | 9 of Coins
++10C     |    10 | Coins     | 10 of Coins
++11C     |    11 | Coins     | 11 of Coins
++12C     |    12 | Coins     | 12 of Coins
++13C     |    13 | Coins     | 13 of Coins
++14C     |    14 | Coins     | 14 of Coins
++15C     |    15 | Coins     | 15 of Coins
++1T      |     1 | Staves    | 1 of Staves
++2T      |     2 | Staves    | 2 of Staves
++3T      |     3 | Staves    | 3 of Staves
++4T      |     4 | Staves    | 4 of Staves
++5T      |     5 | Staves    | 5 of Staves
++6T      |     6 | Staves    | 6 of Staves
++7T      |     7 | Staves    | 7 of Staves
++8T      |     8 | Staves    | 8 of Staves
++9T      |     9 | Staves    | 9 of Staves
++10T     |    10 | Staves    | 10 of Staves
++11T     |    11 | Staves    | 11 of Staves
++12T     |    12 | Staves    | 12 of Staves
++13T     |    13 | Staves    | 13 of Staves
++14T     |    14 | Staves    | 14 of Staves
++15T     |    15 | Staves    | 15 of Staves
+De       |    -1 | Arcana    | Death
+De2      |    -1 | Arcana    | Death
+St       |    -2 | Arcana    | Strength
+St2      |    -2 | Arcana    | Strength
+Mo       |    -3 | Arcana    | Moderation
+Mo2      |    -3 | Arcana    | Moderation
+Ev       |    -4 | Arcana    | Evil One
+Ev2      |    -4 | Arcana    | Evil One
+Ju       |    -5 | Arcana    | Justice
+Ju2      |    -5 | Arcana    | Justice
+Qu       |    -6 | Arcana    | Queen of Air and Darkness
+Qu2      |    -6 | Arcana    | Queen of Air and Darkness
+En       |    -7 | Arcana    | Endurance
+En2      |    -7 | Arcana    | Endurance
+Ba       |    -8 | Arcana    | Balance
+Ba2      |    -8 | Arcana    | Balance
+Dm       |    -9 | Arcana    | Demise
+Dm2      |    -9 | Arcana    | Demise
+Ds       |   -10 | Arcana    | Destruction
+Ds2      |   -10 | Arcana    | Destruction
+Dp       |   -11 | Arcana    | Despair
+Dp2      |   -11 | Arcana    | Despair
+Fa       |   -12 | Arcana    | Failure
+Fa2      |   -12 | Arcana    | Failure
+Fu       |   -13 | Arcana    | Futility
+Fu2      |   -13 | Arcana    | Futility
+Mi       |   -14 | Arcana    | Mistress
+Mi2      |   -14 | Arcana    | Mistress
+Id       |   -15 | Arcana    | Idiot
+Id2      |   -15 | Arcana    | Idiot
+Sr       |   -17 | Arcana    | Star
+Sr2      |   -17 | Arcana    | Star
+BACK     |     0 | Back      | 0 of Back
+
+Total cards: 93
+Regular cards: 60 (15 per suit × 4 suits)
+Arcana cards: 32 (16 types × 2 copies)
+Back card: 1
+Total: 93 cards

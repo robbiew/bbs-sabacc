@@ -1,0 +1,54 @@
+[37;1mCP437 CHARACTER TEST[0m
+===================
+
+Box Drawing Characters:
+ÚÄÄÄÄÄÄÄ¿  (corners and lines)
+³       ³  (vertical)
+ÀÄÄÄÄÄÄÄÙ  (bottom)
+
+Card Suit Symbols:
+Spades: [34m[0m  (\x06)
+Hearts: [31m[0m  (\x03)
+Diamonds: [32m[0m  (\x04)
+Clubs: [33m[0m  (\x05)
+Star: [35m[0m  (\x0f)
+
+Sample Card (5 of Spades):
+[34mÚÄÄÄÄÄÄÄ¿[0m
+[34m³[37;1m 5     [34m³[0m
+[34m³       ³[0m
+[34m³      ³[0m
+[34m³       ³[0m
+[34m³     [37;1m 5[34m³[0m
+[34mÀÄÄÄÄÄÄÄÙ[0m
+
+Sample Card (10 of Hearts):
+[31mÚÄÄÄÄÄÄÄ¿[0m
+[31m³[37;1m10     [31m³[0m
+[31m³       ³[0m
+[31m³      ³[0m
+[31m³       ³[0m
+[31m³     [37;1m10[31m³[0m
+[31mÀÄÄÄÄÄÄÄÙ[0m
+
+Sample Arcana Card (Idiot):
+[35mÚÄÄÄÄÄÄÄ¿[0m
+[35m³[37;1mId     [35m³[0m
+[35m³       ³[0m
+[35m³      ³[0m
+[35m³       ³[0m
+[35m³     [37;1mId[35m³[0m
+[35mÀÄÄÄÄÄÄÄÙ[0m
+
+Pattern Test:
+[31m°°°°°[0m  (light shade)
+[31m±±±±±[0m  (medium shade)
+[31m²²²²²[0m  (dark shade)
+[31mÛÛÛÛÛ[0m  (full block)
+
+Color Test:
+[30m Color 1 [0m[31m Color 2 [0m[32m Color 3 [0m[33m Color 4 [0m[34m Color 5 [0m[35m Color 6 [0m[36m Color 7 [0m[37m Color 8 [0m
+[30;1m Bright 1 [0m[31;1m Bright 2 [0m[32;1m Bright 3 [0m[33;1m Bright 4 [0m[34;1m Bright 5 [0m[35;1m Bright 6 [0m[36;1m Bright 7 [0m[37;1m Bright 8 [0m
+
+If you can see the cards and symbols properly,
+your ANSI viewer supports CP437!
