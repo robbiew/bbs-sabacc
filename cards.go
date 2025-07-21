@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"math/rand"
+	"os"
+	"strings"
 	"time"
 
 	gd "github.com/robbiew/godoors"
@@ -18,6 +22,27 @@ type Card struct {
 // Deck represents a deck of Sabacc cards
 type Deck struct {
 	Cards []Card
+}
+
+// Add these structs at the top of cards.go
+type CardDatabase struct {
+	Filename   string
+	CardWidth  int
+	CardHeight int
+	CardIndex  map[string]CardEntry
+	FileData   []byte
+}
+
+type CardEntry struct {
+	Offset int
+	Length int
+	Width  int
+	Height int
+}
+
+type CardRenderer struct {
+	Database    *CardDatabase
+	CardSpacing int
 }
 
 // Card suits
@@ -46,6 +71,530 @@ var ArcanaCards = []Card{
 	{Value: -14, Suit: "Arcana", Name: "Mistress"},
 	{Value: -15, Suit: "Arcana", Name: "Idiot"},
 	{Value: -17, Suit: "Arcana", Name: "Star"},
+}
+
+// File format for sabacc_cards.bin:
+/*
+SABACC CARD DATABASE FORMAT:
+
+HEADER (Fixed size):
+- Bytes 0-3:   Magic number "SABC" (0x53414243)
+- Bytes 4-5:   Version number (currently 0x0001)
+- Bytes 6-7:   Number of cards in database
+- Bytes 8-9:   Standard card width
+- Bytes 10-11: Standard card height
+- Bytes 12-15: Offset to card index table
+- Bytes 16-31: Reserved for future use
+
+CARD INDEX TABLE:
+For each card:
+- 8 bytes: Card ID (null-terminated, e.g. "+1S\0\0\0\0\0")
+- 4 bytes: Data offset (from start of file)
+- 4 bytes: Data length
+- 2 bytes: Card width (if different from standard)
+- 2 bytes: Card height (if different from standard)
+
+CARD DATA SECTION:
+- Raw ANSI data for each card, referenced by index table
+*/
+
+// NewCardDatabase creates or loads the card database
+func NewCardDatabase(filename string) (*CardDatabase, error) {
+	db := &CardDatabase{
+		Filename:  filename,
+		CardIndex: make(map[string]CardEntry),
+	}
+
+	// Try to load existing file
+	if err := db.Load(); err != nil {
+		// If file doesn't exist, create a new one with defaults
+		return db.CreateDefault()
+	}
+
+	return db, nil
+}
+
+// Load reads the card database from file
+func (db *CardDatabase) Load() error {
+	data, err := os.ReadFile(db.Filename)
+	if err != nil {
+		return err
+	}
+
+	db.FileData = data
+
+	if len(data) < 32 {
+		return fmt.Errorf("invalid card database file")
+	}
+
+	// Read header
+	magic := string(data[0:4])
+	if magic != "SABC" {
+		return fmt.Errorf("invalid magic number")
+	}
+
+	version := binary.LittleEndian.Uint16(data[4:6])
+	if version != 1 {
+		return fmt.Errorf("unsupported version: %d", version)
+	}
+
+	numCards := binary.LittleEndian.Uint16(data[6:8])
+	db.CardWidth = int(binary.LittleEndian.Uint16(data[8:10]))
+	db.CardHeight = int(binary.LittleEndian.Uint16(data[10:12]))
+	indexOffset := binary.LittleEndian.Uint32(data[12:16])
+
+	// Read card index
+	db.CardIndex = make(map[string]CardEntry)
+
+	for i := 0; i < int(numCards); i++ {
+		entryOffset := int(indexOffset) + (i * 20) // 20 bytes per entry
+
+		if entryOffset+20 > len(data) {
+			break
+		}
+
+		// Read card ID (8 bytes, null-terminated)
+		cardID := string(bytes.TrimRight(data[entryOffset:entryOffset+8], "\x00"))
+
+		// Read entry data
+		dataOffset := binary.LittleEndian.Uint32(data[entryOffset+8 : entryOffset+12])
+		dataLength := binary.LittleEndian.Uint32(data[entryOffset+12 : entryOffset+16])
+		cardWidth := binary.LittleEndian.Uint16(data[entryOffset+16 : entryOffset+18])
+		cardHeight := binary.LittleEndian.Uint16(data[entryOffset+18 : entryOffset+20])
+
+		// Use standard dimensions if card-specific ones are 0
+		if cardWidth == 0 {
+			cardWidth = uint16(db.CardWidth)
+		}
+		if cardHeight == 0 {
+			cardHeight = uint16(db.CardHeight)
+		}
+
+		db.CardIndex[cardID] = CardEntry{
+			Offset: int(dataOffset),
+			Length: int(dataLength),
+			Width:  int(cardWidth),
+			Height: int(cardHeight),
+		}
+	}
+
+	return nil
+}
+
+// GetCardData retrieves ANSI data for a specific card
+func (db *CardDatabase) GetCardData(cardID string) ([]byte, int, int, error) {
+	entry, exists := db.CardIndex[cardID]
+	if !exists {
+		return nil, 0, 0, fmt.Errorf("card not found: %s", cardID)
+	}
+
+	if entry.Offset+entry.Length > len(db.FileData) {
+		return nil, 0, 0, fmt.Errorf("invalid card data offset")
+	}
+
+	data := db.FileData[entry.Offset : entry.Offset+entry.Length]
+	return data, entry.Width, entry.Height, nil
+}
+
+// CreateDefault creates a new card database with all Sabacc cards
+func (db *CardDatabase) CreateDefault() (*CardDatabase, error) {
+	var buffer bytes.Buffer
+	cardData := make(map[string][]byte)
+
+	// Generate all cards
+	suits := []string{SuitSabers, SuitFlasks, SuitCoins, SuitStaves}
+
+	// Regular numbered cards (1-15 for each suit)
+	for _, suit := range suits {
+		for value := 1; value <= 15; value++ {
+			card := Card{Value: value, Suit: suit}
+			cardID := card.String()
+			ansiData := db.generateCardANSI(card)
+			cardData[cardID] = ansiData
+		}
+	}
+
+	// Arcana cards
+	arcanaCards := []struct {
+		name   string
+		value  int
+		abbrev string
+	}{
+		{"Death", -1, "De"},
+		{"Strength", -2, "St"},
+		{"Moderation", -3, "Mo"},
+		{"Evil One", -4, "Ev"},
+		{"Justice", -5, "Ju"},
+		{"Queen of Air and Darkness", -6, "Qu"},
+		{"Endurance", -7, "En"},
+		{"Balance", -8, "Ba"},
+		{"Demise", -9, "Dm"},
+		{"Destruction", -10, "Ds"},
+		{"Despair", -11, "Dp"},
+		{"Failure", -12, "Fa"},
+		{"Futility", -13, "Fu"},
+		{"Mistress", -14, "Mi"},
+		{"Idiot", -15, "Id"},
+		{"Star", -17, "Sr"},
+	}
+
+	for _, arcana := range arcanaCards {
+		// Two copies of each arcana card
+		for copy := 0; copy < 2; copy++ {
+			card := Card{Value: arcana.value, Suit: "Arcana", Name: arcana.name}
+			cardID := arcana.abbrev
+			if copy == 1 {
+				cardID += "2" // Second copy
+			}
+			ansiData := db.generateCardANSI(card)
+			cardData[cardID] = ansiData
+		}
+	}
+
+	// Add face-down card
+	cardData["BACK"] = db.generateBackCardANSI()
+
+	// Set standard dimensions
+	db.CardWidth = 9
+	db.CardHeight = 7
+
+	// Write header
+	header := make([]byte, 32)
+	copy(header[0:4], "SABC")                                           // Magic
+	binary.LittleEndian.PutUint16(header[4:6], 1)                       // Version
+	binary.LittleEndian.PutUint16(header[6:8], uint16(len(cardData)))   // Number of cards
+	binary.LittleEndian.PutUint16(header[8:10], uint16(db.CardWidth))   // Standard width
+	binary.LittleEndian.PutUint16(header[10:12], uint16(db.CardHeight)) // Standard height
+	binary.LittleEndian.PutUint32(header[12:16], 32)                    // Index offset (after header)
+
+	buffer.Write(header)
+
+	// Calculate data section offset
+	indexSize := len(cardData) * 20 // 20 bytes per index entry
+	dataOffset := 32 + indexSize
+
+	// Write index table and collect data for data section
+	var dataSection bytes.Buffer
+	currentDataOffset := dataOffset
+
+	db.CardIndex = make(map[string]CardEntry)
+
+	for cardID, ansiData := range cardData {
+		// Write index entry
+		indexEntry := make([]byte, 20)
+
+		// Card ID (8 bytes, null-padded)
+		idBytes := []byte(cardID)
+		if len(idBytes) > 8 {
+			idBytes = idBytes[:8]
+		}
+		copy(indexEntry[0:8], idBytes)
+
+		// Data offset and length
+		binary.LittleEndian.PutUint32(indexEntry[8:12], uint32(currentDataOffset))
+		binary.LittleEndian.PutUint32(indexEntry[12:16], uint32(len(ansiData)))
+		binary.LittleEndian.PutUint16(indexEntry[16:18], 0) // Use standard width
+		binary.LittleEndian.PutUint16(indexEntry[18:20], 0) // Use standard height
+
+		buffer.Write(indexEntry)
+
+		// Add to data section
+		dataSection.Write(ansiData)
+
+		// Store in index
+		db.CardIndex[cardID] = CardEntry{
+			Offset: currentDataOffset,
+			Length: len(ansiData),
+			Width:  db.CardWidth,
+			Height: db.CardHeight,
+		}
+
+		currentDataOffset += len(ansiData)
+	}
+
+	// Write data section
+	buffer.Write(dataSection.Bytes())
+
+	// Save to file
+	db.FileData = buffer.Bytes()
+	err := os.WriteFile(db.Filename, db.FileData, 0644)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("Created card database with %d cards (%d bytes)\n",
+		len(cardData), len(db.FileData))
+
+	return db, nil
+}
+
+// generateCardANSI creates ANSI art for a card
+// generateCardANSI creates ANSI art for a card using CP437 characters
+func (db *CardDatabase) generateCardANSI(card Card) []byte {
+	var buffer bytes.Buffer
+
+	if card.Suit == "BACK" || card.String() == "BACK" {
+		// Special case for back card using CP437 characters
+		lines := []string{
+			"\x1b[31m\xda\xc4\xc4\xc4\xc4\xc4\xc4\xc4\xbf\x1b[0m",             // ┌───────┐
+			"\x1b[31m\xb3\x1b[37;1m \xb0\xb0\xb0\xb0\xb0 \x1b[31m\xb3\x1b[0m", // │ ░░░░░ │
+			"\x1b[31m\xb3\x1b[37;1m \xb0\xdb\xdb\xdb\xb0 \x1b[31m\xb3\x1b[0m", // │ ░███░ │
+			"\x1b[31m\xb3\x1b[37;1m \xb0\xb0\xb0\xb0\xb0 \x1b[31m\xb3\x1b[0m", // │ ░░░░░ │
+			"\x1b[31m\xb3\x1b[37;1m \xb0\xdb\xdb\xdb\xb0 \x1b[31m\xb3\x1b[0m", // │ ░███░ │
+			"\x1b[31m\xb3\x1b[37;1m \xb0\xb0\xb0\xb0\xb0 \x1b[31m\xb3\x1b[0m", // │ ░░░░░ │
+			"\x1b[31m\xc0\xc4\xc4\xc4\xc4\xc4\xc4\xc4\xd9\x1b[0m",             // └───────┘
+		}
+
+		for i, line := range lines {
+			buffer.WriteString(line)
+			if i < len(lines)-1 {
+				buffer.WriteString("\r\n")
+			}
+		}
+
+		return buffer.Bytes()
+	}
+
+	// Regular card using proper CP437 box drawing characters
+	var displayValue string
+	if card.Suit == "Arcana" {
+		displayValue = card.String() // This will be "Id", "De", etc.
+		if len(displayValue) > 2 {
+			displayValue = displayValue[:2]
+		}
+		// Pad arcana to 2 chars if needed
+		for len(displayValue) < 2 {
+			displayValue = displayValue + " "
+		}
+	} else {
+		displayValue = fmt.Sprintf("%d", card.Value)
+	}
+
+	// Get proper color code (30-37 range)
+	var colorCode string
+	switch card.Suit {
+	case SuitSabers:
+		colorCode = "34" // Blue
+	case SuitFlasks:
+		colorCode = "32" // Green
+	case SuitCoins:
+		colorCode = "33" // Yellow
+	case SuitStaves:
+		colorCode = "31" // Red
+	case "Arcana":
+		colorCode = "35" // Magenta
+	default:
+		colorCode = "37" // White
+	}
+
+	// Get proper suit symbol using CP437
+	var suitChar string
+	switch card.Suit {
+	case SuitSabers:
+		suitChar = "\x06" // CP437 spade ♠
+	case SuitFlasks:
+		suitChar = "\x04" // CP437 diamond ♦
+	case SuitCoins:
+		suitChar = "\x05" // CP437 club ♣
+	case SuitStaves:
+		suitChar = "\x03" // CP437 heart ♥
+	case "Arcana":
+		suitChar = "\x0f" // CP437 star ☼
+	default:
+		suitChar = "?"
+	}
+
+	// Build card using CP437 box drawing characters
+	// Card format: 9 chars wide, 7 chars tall
+	// ┌───────┐
+	// │XX     │  (value left-aligned, then spaces)
+	// │       │
+	// │   S   │  (suit centered)
+	// │       │
+	// │     XX│  (spaces, then value right-aligned)
+	// └───────┘
+
+	// Create top line: value + padding to 7 chars total
+	topLine := displayValue
+	for len(topLine) < 7 {
+		topLine += " "
+	}
+
+	// Create bottom line: padding + value to 7 chars total
+	bottomLine := ""
+	spacesNeeded := 7 - len(displayValue)
+	for i := 0; i < spacesNeeded; i++ {
+		bottomLine += " "
+	}
+	bottomLine += displayValue
+
+	lines := []string{
+		"\x1b[" + colorCode + "m\xda\xc4\xc4\xc4\xc4\xc4\xc4\xc4\xbf\x1b[0m",                        // ┌───────┐
+		"\x1b[" + colorCode + "m\xb3\x1b[37;1m" + topLine + "\x1b[" + colorCode + "m\xb3\x1b[0m",    // │XX     │
+		"\x1b[" + colorCode + "m\xb3       \xb3\x1b[0m",                                             // │       │
+		"\x1b[" + colorCode + "m\xb3   " + suitChar + "   \xb3\x1b[0m",                              // │   S   │
+		"\x1b[" + colorCode + "m\xb3       \xb3\x1b[0m",                                             // │       │
+		"\x1b[" + colorCode + "m\xb3\x1b[37;1m" + bottomLine + "\x1b[" + colorCode + "m\xb3\x1b[0m", // │     XX│
+		"\x1b[" + colorCode + "m\xc0\xc4\xc4\xc4\xc4\xc4\xc4\xc4\xd9\x1b[0m",                        // └───────┘
+	}
+
+	for i, line := range lines {
+		buffer.WriteString(line)
+		if i < len(lines)-1 {
+			buffer.WriteString("\r\n")
+		}
+	}
+
+	return buffer.Bytes()
+}
+
+// generateBackCardANSI creates ANSI art for face-down card using CP437
+func (db *CardDatabase) generateBackCardANSI() []byte {
+	var buffer bytes.Buffer
+
+	lines := []string{
+		"\x1b[31m\xda\xc4\xc4\xc4\xc4\xc4\xc4\xc4\xbf\x1b[0m",             // ┌───────┐
+		"\x1b[31m\xb3\x1b[37;1m \xb0\xb0\xb0\xb0\xb0 \x1b[31m\xb3\x1b[0m", // │ ░░░░░ │
+		"\x1b[31m\xb3\x1b[37;1m \xb0\xdb\xdb\xdb\xb0 \x1b[31m\xb3\x1b[0m", // │ ░███░ │
+		"\x1b[31m\xb3\x1b[37;1m \xb0\xb0\xb0\xb0\xb0 \x1b[31m\xb3\x1b[0m", // │ ░░░░░ │
+		"\x1b[31m\xb3\x1b[37;1m \xb0\xdb\xdb\xdb\xb0 \x1b[31m\xb3\x1b[0m", // │ ░███░ │
+		"\x1b[31m\xb3\x1b[37;1m \xb0\xb0\xb0\xb0\xb0 \x1b[31m\xb3\x1b[0m", // │ ░░░░░ │
+		"\x1b[31m\xc0\xc4\xc4\xc4\xc4\xc4\xc4\xc4\xd9\x1b[0m",             // └───────┘
+	}
+
+	for i, line := range lines {
+		buffer.WriteString(line)
+		if i < len(lines)-1 {
+			buffer.WriteString("\r\n")
+		}
+	}
+
+	return buffer.Bytes()
+}
+
+// NewCardRenderer creates renderer with single file database
+func NewCardRenderer() *CardRenderer {
+	db, err := NewCardDatabase("sabacc_cards.bin")
+	if err != nil {
+		fmt.Printf("Warning: Could not load card database: %v\n", err)
+		// Create default database
+		db, _ = (&CardDatabase{}).CreateDefault()
+	}
+
+	return &CardRenderer{
+		Database:    db,
+		CardSpacing: 1,
+	}
+}
+
+// RenderCard renders a single card at current position
+func (cr *CardRenderer) RenderCard(card Card) {
+	cardID := card.String()
+
+	data, _, height, err := cr.Database.GetCardData(cardID)
+	if err != nil {
+		// Fallback to ASCII if card not found
+		cr.renderFallbackCard(card)
+		return
+	}
+
+	// Parse and render ANSI data
+	lines := strings.Split(string(data), "\r\n")
+
+	startX, startY := cr.getCurrentPos()
+
+	for i, line := range lines {
+		if i >= height {
+			break
+		}
+		gd.MoveCursor(startX, startY+i)
+		fmt.Print(line)
+	}
+}
+
+// RenderCards renders multiple cards horizontally
+func (cr *CardRenderer) RenderCards(cards []Card, startX, startY int) {
+	for i, card := range cards {
+		cardX := startX + (i * (cr.Database.CardWidth + cr.CardSpacing))
+		gd.MoveCursor(cardX, startY)
+
+		cardID := card.String()
+		data, _, height, err := cr.Database.GetCardData(cardID)
+		if err != nil {
+			cr.renderFallbackCardAt(card, cardX, startY)
+			continue
+		}
+
+		// Render card
+		lines := strings.Split(string(data), "\r\n")
+		for row, line := range lines {
+			if row >= height {
+				break
+			}
+			gd.MoveCursor(cardX, startY+row)
+			fmt.Print(line)
+		}
+	}
+}
+
+// RenderFaceDownCard renders a face-down card
+func (cr *CardRenderer) RenderFaceDownCard(x, y int) {
+	data, _, height, err := cr.Database.GetCardData("BACK")
+	if err != nil {
+		// Fallback ASCII back card
+		cr.renderFallbackBack(x, y)
+		return
+	}
+
+	lines := strings.Split(string(data), "\r\n")
+	for row, line := range lines {
+		if row >= height {
+			break
+		}
+		gd.MoveCursor(x, y+row)
+		fmt.Print(line)
+	}
+}
+
+// Utility functions
+func (cr *CardRenderer) getCurrentPos() (int, int) {
+	// Placeholder - would query terminal cursor position
+	return 1, 1
+}
+
+func (cr *CardRenderer) renderFallbackCard(card Card) {
+	// Simple ASCII fallback
+	fmt.Printf("[%s]", card.String())
+}
+
+func (cr *CardRenderer) renderFallbackCardAt(card Card, x, y int) {
+	gd.MoveCursor(x, y)
+	fmt.Printf("[%s]", card.String())
+}
+
+func (cr *CardRenderer) renderFallbackBack(x, y int) {
+	gd.MoveCursor(x, y)
+	fmt.Print("[??]")
+}
+
+// Utility function to create the card database
+func CreateCardDatabase() {
+	fmt.Println("Creating Sabacc card database...")
+
+	db := &CardDatabase{
+		Filename: "sabacc_cards.bin",
+	}
+
+	_, err := db.CreateDefault()
+	if err != nil {
+		fmt.Printf("Error creating database: %v\n", err)
+		return
+	}
+
+	fmt.Println("Card database created successfully!")
+	fmt.Printf("File: %s\n", db.Filename)
+	fmt.Printf("Cards: %d\n", len(db.CardIndex))
+	fmt.Printf("Size: %d bytes\n", len(db.FileData))
 }
 
 // Also check that your cards.go has proper String() method:

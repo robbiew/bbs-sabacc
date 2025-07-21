@@ -20,13 +20,12 @@ var (
 	TitleScreen string
 	//go:embed ansi/menu.ans
 	MenuScreen string
-	//go:embed ansi/game.ans
-	GameScreen string
 )
 
 // SabaccGame represents the main game state
 type SabaccGame struct {
 	User          gd.User
+	CardRenderer  *CardRenderer
 	Deck          Deck
 	Players       []Player
 	HandPot       int
@@ -88,15 +87,22 @@ func main() {
 		_ = keyboard.Close()
 	}()
 
+	cardRenderer := NewCardRenderer()
+	if cardRenderer == nil {
+		fmt.Println("Warning: Card graphics not available, using ASCII fallback")
+		// Game still works without graphics
+	}
+
 	// Initialize game
 	game = &SabaccGame{
-		User:      u,
-		HandPot:   0,
-		SabaccPot: 0,
-		Round:     0,
-		Turn:      0,
-		Dealer:    0,
-		MinRounds: 1, // Classic rules: minimum 1-4 rounds
+		User:         u,
+		CardRenderer: cardRenderer,
+		HandPot:      0,
+		SabaccPot:    0,
+		Round:        0,
+		Turn:         0,
+		Dealer:       0,
+		MinRounds:    1, // Classic rules: minimum 1-4 rounds
 	}
 
 	// Show title screen
@@ -110,14 +116,33 @@ func showTitleScreen() {
 	gd.ClearScreen()
 	gd.MoveCursor(0, 0)
 
-	// Show the sabacc ASCII art instead of the simple text title
-	centerY := game.User.H / 2
-	gd.MoveCursor(1, centerY-6)
-	displayAsciiArt("sabacc")
+	// Try to display the ANSI title screen first
+	if _, err := os.Stat("ansi/title.ans"); err == nil {
+		// ANSI file exists, use it
+		file, err := os.ReadFile("ansi/title.ans")
+		if err == nil {
+			fmt.Print(string(file))
+		} else {
+			// Fall back to embedded title if file read fails
+			fmt.Print(TitleScreen)
+		}
+	} else {
+		// ANSI file doesn't exist, use embedded title or simple fallback
+		if TitleScreen != "" {
+			fmt.Print(TitleScreen)
+		} else {
+			// Simple fallback if no embedded title
+			centerY := game.User.H / 2
+			gd.MoveCursor(1, centerY-6)
+			displayAsciiArt("sabacc")
 
-	gd.MoveCursor(1, centerY+2)
-	fmt.Print(gd.Cyan + "Classic 76-Card Sabacc for BBS" + gd.Reset)
-	gd.MoveCursor(1, centerY+4)
+			gd.MoveCursor(1, centerY+2)
+			fmt.Print(gd.Cyan + "Classic 76-Card Sabacc for BBS" + gd.Reset)
+		}
+	}
+
+	// Add welcome message and continue prompt at bottom
+	gd.MoveCursor(1, game.User.H-4)
 	fmt.Print(gd.White + "Welcome, " + gd.CyanHi + game.User.Alias + gd.Reset)
 
 	gd.MoveCursor(1, game.User.H-2)
@@ -131,11 +156,33 @@ func mainMenu() {
 		gd.ClearScreen()
 		gd.MoveCursor(0, 0)
 
-		// Display menu
-		fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
-		fmt.Print(gd.CyanHi + "              SABACC CANTINA\n" + gd.Reset)
-		fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
+		// Try to display the ANSI menu screen first
+		if _, err := os.Stat("ansi/menu.ans"); err == nil {
+			// ANSI file exists, use it
+			file, err := os.ReadFile("ansi/menu.ans")
+			if err == nil {
+				fmt.Print(string(file))
+			} else {
+				// Fall back to embedded menu if file read fails
+				if MenuScreen != "" {
+					fmt.Print(MenuScreen)
+				} else {
+					// Simple fallback menu
+					displaySimpleMenu()
+				}
+			}
+		} else {
+			// ANSI file doesn't exist, use embedded menu or simple fallback
+			if MenuScreen != "" {
+				fmt.Print(MenuScreen)
+			} else {
+				// Simple fallback menu
+				displaySimpleMenu()
+			}
+		}
 
+		// Position cursor for menu options (after ANSI art)
+		gd.MoveCursor(1, 4)
 		fmt.Print(gd.Yellow + "[" + gd.YellowHi + "N" + gd.Yellow + "] " + gd.White + "New Game\n" + gd.Reset)
 		fmt.Print(gd.Yellow + "[" + gd.YellowHi + "R" + gd.Yellow + "] " + gd.White + "Rules\n" + gd.Reset)
 		fmt.Print(gd.Yellow + "[" + gd.YellowHi + "S" + gd.Yellow + "] " + gd.White + "Statistics\n" + gd.Reset)
@@ -162,6 +209,13 @@ func mainMenu() {
 			exitGame()
 		}
 	}
+}
+
+// Helper function for simple fallback menu
+func displaySimpleMenu() {
+	fmt.Print(gd.CyanHi + "-------------------------------------------\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + "              SABACC CANTINA\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + "-------------------------------------------\n\n" + gd.Reset)
 }
 
 func startNewGame() {
@@ -744,70 +798,104 @@ func displayGameScreen() {
 	gd.MoveCursor(0, 0)
 
 	// Game header
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "                SABACC GAME\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + "-------------------------------------------------------------------------------\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + "                                SABACC GAME                                    \n" + gd.Reset)
+	fmt.Print(gd.CyanHi + "-------------------------------------------------------------------------------\n" + gd.Reset)
 
-	// Pot information - Fix: ensure all values are integers
-	fmt.Printf("%sHand Pot:%s %s%d%s    %sSabacc Pot:%s %s%d%s    %sRound:%s %s%d%s\n\n",
+	// Pot information
+	fmt.Printf("%sHand Pot:%s %s%d%s    %sSabacc Pot:%s %s%d%s    %sRound:%s %s%d%s    %sDeck:%s %s%d%s\n\n",
 		gd.Yellow, gd.Reset, gd.YellowHi, game.HandPot, gd.Reset,
 		gd.Yellow, gd.Reset, gd.YellowHi, game.SabaccPot, gd.Reset,
-		gd.Yellow, gd.Reset, gd.YellowHi, game.Round, gd.Reset)
+		gd.Yellow, gd.Reset, gd.YellowHi, game.Round, gd.Reset,
+		gd.Yellow, gd.Reset, gd.YellowHi, len(game.Deck.Cards), gd.Reset)
 
 	// Display opponent's hand (face down)
 	if len(game.Players) > 1 {
 		opponent := &game.Players[1]
-		fmt.Printf("%s%s's Hand:%s ", gd.Cyan, opponent.Name, gd.Reset)
-		for i := 0; i < len(opponent.Hand); i++ {
-			fmt.Printf("%s[??]%s ", gd.Red, gd.Reset)
-		}
-		fmt.Printf("  %sCredits:%s %s%d%s\n\n",
+		gd.MoveCursor(1, 5)
+		fmt.Printf("%s%s's Hand:%s", gd.Cyan, opponent.Name, gd.Reset)
+
+		gd.MoveCursor(55, 5)
+		fmt.Printf("%sCredits:%s %s%d%s",
 			gd.Yellow, gd.Reset, gd.YellowHi, opponent.Credits, gd.Reset)
+
+		// Use card renderer for opponent's face-down cards
+		if game.CardRenderer != nil && game.CardRenderer.Database != nil {
+			for i := 0; i < len(opponent.Hand); i++ {
+				game.CardRenderer.RenderFaceDownCard(2+(i*11), 6)
+			}
+		} else {
+			// ASCII fallback for opponent
+			gd.MoveCursor(2, 7)
+			for i := 0; i < len(opponent.Hand); i++ {
+				fmt.Printf("%s[??]%s ", gd.Red, gd.Reset)
+			}
+		}
 	}
 
-	// Display player's hand - Fix: ensure proper card display and total calculation
+	// Display player's hand (face up)
 	if len(game.Players) > 0 {
-		playerHand := &game.Players[0]
-		fmt.Printf("%sYour Hand:%s ", gd.Cyan, gd.Reset)
+		player := &game.Players[0]
+		playerStartY := 15
 
-		// Calculate total while displaying cards
-		total := 0
-		for _, card := range playerHand.Hand {
-			fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
-			total += card.Value
-		}
+		gd.MoveCursor(1, playerStartY)
+		fmt.Printf("%sYour Hand:%s", gd.Cyan, gd.Reset)
 
+		// Calculate and display total
+		total := calculateHandTotal(player.Hand)
 		// Add static field cards to total
-		for _, card := range playerHand.StaticField {
+		for _, card := range player.StaticField {
 			total += card.Value
 		}
 
-		fmt.Printf("  %sTotal:%s %s%d%s  %sCredits:%s %s%d%s\n\n",
-			gd.Yellow, gd.Reset, displayHandValue(total), total, gd.Reset,
-			gd.Yellow, gd.Reset, gd.YellowHi, playerHand.Credits, gd.Reset)
+		gd.MoveCursor(55, playerStartY)
+		fmt.Printf("%sTotal:%s %s  %sCredits:%s %s%d%s",
+			gd.Yellow, gd.Reset, displayHandValue(total),
+			gd.Yellow, gd.Reset, gd.YellowHi, player.Credits, gd.Reset)
 
-		// Display static field if any
-		if len(playerHand.StaticField) > 0 {
-			fmt.Printf("%sStatic Field:%s ", gd.Magenta, gd.Reset)
-			for _, card := range playerHand.StaticField {
+		// Use card renderer for player's cards
+		if game.CardRenderer != nil && game.CardRenderer.Database != nil {
+			game.CardRenderer.RenderCards(player.Hand, 2, playerStartY+1)
+		} else {
+			// ASCII fallback for player
+			gd.MoveCursor(2, playerStartY+1)
+			for _, card := range player.Hand {
 				fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
 			}
-			fmt.Println()
+		}
+
+		// Display static field if present
+		if len(player.StaticField) > 0 {
+			staticY := playerStartY + 9
+			gd.MoveCursor(1, staticY)
+			fmt.Printf("%sStatic Field (Protected):%s", gd.Magenta, gd.Reset)
+
+			// Use card renderer for static field
+			if game.CardRenderer != nil && game.CardRenderer.Database != nil {
+				game.CardRenderer.RenderCards(player.StaticField, 2, staticY+1)
+			} else {
+				// ASCII fallback for static field
+				gd.MoveCursor(2, staticY+1)
+				for _, card := range player.StaticField {
+					fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
+				}
+			}
 		}
 	}
 
-	fmt.Println()
-
-	// Show whose turn it is
-	if game.Turn == 0 {
-		fmt.Print(gd.GreenHi + "YOUR TURN\n" + gd.Reset)
-	} else if len(game.Players) > game.Turn {
-		fmt.Printf("%s%s's turn...%s\n", gd.YellowHi, game.Players[game.Turn].Name, gd.Reset)
+	// Game status and actions
+	actionY := 28
+	if len(game.Players) > 0 && len(game.Players[0].StaticField) > 0 {
+		actionY = 34 // Move down if static field is displayed
 	}
 
-	// Show remaining deck info
-	fmt.Printf("%sDeck: %s%d cards remaining%s\n",
-		gd.Magenta, gd.MagentaHi, len(game.Deck.Cards), gd.Reset)
+	gd.MoveCursor(1, actionY)
+	if game.Turn == 0 {
+		fmt.Print(gd.GreenHi + "► YOUR TURN ◄" + gd.Reset)
+	} else if game.Turn < len(game.Players) {
+		fmt.Printf("%s%s is thinking...%s",
+			gd.YellowHi, game.Players[game.Turn].Name, gd.Reset)
+	}
 }
 
 func showGameResults() {
