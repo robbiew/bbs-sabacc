@@ -36,9 +36,10 @@ type SabaccGame struct {
 	Dealer        int
 	Called        bool
 	GameOver      bool
-	MinRounds     int  // Minimum rounds before calling allowed
-	BettingPhase  bool // True during betting, false during play
-	ShiftOccurred bool // Track if shift happened this turn
+	MinRounds     int           // Minimum rounds before calling allowed
+	BettingPhase  bool          // True during betting, false during play
+	ShiftOccurred bool          // Track if shift happened this turn
+	Layout        *ScreenLayout // New persistent UI system
 }
 
 // Player represents a player in the game
@@ -93,7 +94,7 @@ func main() {
 		// Game still works without graphics
 	}
 
-	// Initialize game
+	// Initialize game with new UI system
 	game = &SabaccGame{
 		User:         u,
 		CardRenderer: cardRenderer,
@@ -102,7 +103,8 @@ func main() {
 		Round:        0,
 		Turn:         0,
 		Dealer:       0,
-		MinRounds:    1, // Classic rules: minimum 1-4 rounds
+		MinRounds:    1,                         // Classic rules: minimum 1-4 rounds
+		Layout:       NewScreenLayout(u.W, u.H), // Initialize persistent UI
 	}
 
 	// Show title screen
@@ -219,7 +221,8 @@ func displaySimpleMenu() {
 }
 
 func startNewGame() {
-	gd.ClearScreen()
+	// Initialize the persistent UI layout
+	game.Layout.InitializeScreen()
 
 	// Initialize deck (76 cards)
 	game.Deck = NewDeck()
@@ -250,7 +253,9 @@ func startNewGame() {
 		game.Players[i].Credits -= anteAmount * 2 // Ante goes to both pots
 	}
 
-	fmt.Printf("%sAnting %d credits to each pot...%s\n", gd.Green, anteAmount, gd.Reset)
+	// Show ante message in game log
+	game.Layout.LogMessage("Both players ante 10 credits to each pot", "info")
+	game.Layout.DisplayMessage("Anging credits to pots...", "info", 0)
 	time.Sleep(2 * time.Second)
 
 	// DEALING ROUND - Deal 2 cards to each player
@@ -263,7 +268,9 @@ func startNewGame() {
 		}
 	}
 
-	fmt.Printf("%sDealing cards...%s\n", gd.Green, gd.Reset)
+	// Show dealing message in game log
+	game.Layout.LogMessage("Dealing 2 cards to each player", "info")
+	game.Layout.DisplayMessage("Dealing cards...", "info", 0)
 	time.Sleep(2 * time.Second)
 
 	// Start game loop
@@ -360,16 +367,10 @@ func gameLoop() {
 	waitForKey()
 }
 
-// Also fix the handlePlayerTurn function to properly handle folding
+// Updated handlePlayerTurn function using persistent UI
 func handlePlayerTurn() {
-	fmt.Println()
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "D" + gd.Yellow + "] " + gd.White + "Draw card\n" + gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "T" + gd.Yellow + "] " + gd.White + "Trade card\n" + gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "S" + gd.Yellow + "] " + gd.White + "Stand (do nothing)\n" + gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "F" + gd.Yellow + "] " + gd.White + "Place card in Static Field\n" + gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "C" + gd.Yellow + "] " + gd.White + "Call hand\n" + gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "Q" + gd.Yellow + "] " + gd.White + "Fold\n\n" + gd.Reset)
-	fmt.Print(gd.Green + "Choice: " + gd.Reset)
+	// Show the player turn menu using our new UI system
+	game.Layout.ShowPlayerTurnMenu(game.Round)
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
@@ -383,33 +384,44 @@ func handlePlayerTurn() {
 		if len(game.Deck.Cards) > 0 {
 			card := game.Deck.Deal()
 			playerRef.Hand = append(playerRef.Hand, card)
-			fmt.Printf("\n%sYou drew: %s[%s]%s\n", gd.Green, getCardColor(card), card.String(), gd.Reset)
+			game.Layout.LogMessage("You drew: ["+card.String()+"]", "action")
+			game.Layout.DisplayMessage("You drew: ["+card.String()+"]", "success", 0)
+			time.Sleep(2 * time.Second)
+		} else {
+			game.Layout.DisplayMessage("No more cards in deck!", "error", 0)
 			time.Sleep(1 * time.Second)
 		}
 	case 't', 'T':
 		handleTradeCard()
 	case 's', 'S':
-		fmt.Printf("\n%sYou stand.%s\n", gd.Green, gd.Reset)
+		game.Layout.LogMessage("You stand (no action)", "action")
+		game.Layout.DisplayMessage("You stand.", "info", 0)
 		time.Sleep(1 * time.Second)
 	case 'f', 'F':
 		handleStaticField()
 	case 'c', 'C':
 		if game.Round >= 2 { // Can only call after round 2
 			game.Called = true
-			fmt.Printf("\n%sYou called the hand!%s\n", gd.GreenHi, gd.Reset)
-			time.Sleep(1 * time.Second)
+			game.Layout.LogMessage("You called the hand!", "important")
+			game.Layout.DisplayMessage("You called the hand!", "success", 0)
+			time.Sleep(2 * time.Second)
 			return // Don't continue with dice roll when calling
 		} else {
-			fmt.Printf("\n%sCannot call until round 2!%s\n", gd.Red, gd.Reset)
-			time.Sleep(1 * time.Second)
+			game.Layout.DisplayMessage("Cannot call until round 2!", "error", 0)
+			time.Sleep(2 * time.Second)
 		}
 	case 'q', 'Q':
 		playerRef.Folded = true
 		playerRef.Credits -= 1 // Fold penalty
 		game.SabaccPot += 1
-		fmt.Printf("\n%sYou folded.%s\n", gd.Red, gd.Reset)
-		time.Sleep(1 * time.Second)
+		game.Layout.LogMessage("You folded (-1 credit penalty)", "important")
+		game.Layout.DisplayMessage("You folded.", "warning", 0)
+		time.Sleep(2 * time.Second)
 		return // Don't continue with dice roll when folding
+	default:
+		game.Layout.DisplayMessage("Invalid choice!", "error", 0)
+		time.Sleep(1 * time.Second)
+		return
 	}
 
 	// Only roll dice if player didn't fold or call
@@ -794,107 +806,42 @@ func resolveHand() {
 // Fixed display functions for Sabacc game
 
 func displayGameScreen() {
-	gd.ClearScreen()
-	gd.MoveCursor(0, 0)
-
-	// Game header
-	fmt.Print(gd.CyanHi + "-------------------------------------------------------------------------------\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "                                SABACC GAME                                    \n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "-------------------------------------------------------------------------------\n" + gd.Reset)
-
-	// Pot information
-	fmt.Printf("%sHand Pot:%s %s%d%s    %sSabacc Pot:%s %s%d%s    %sRound:%s %s%d%s    %sDeck:%s %s%d%s\n\n",
-		gd.Yellow, gd.Reset, gd.YellowHi, game.HandPot, gd.Reset,
-		gd.Yellow, gd.Reset, gd.YellowHi, game.SabaccPot, gd.Reset,
-		gd.Yellow, gd.Reset, gd.YellowHi, game.Round, gd.Reset,
-		gd.Yellow, gd.Reset, gd.YellowHi, len(game.Deck.Cards), gd.Reset)
-
-	// Display opponent's hand (face down)
-	if len(game.Players) > 1 {
-		opponent := &game.Players[1]
-		gd.MoveCursor(1, 5)
-		fmt.Printf("%s%s's Hand:%s", gd.Cyan, opponent.Name, gd.Reset)
-
-		gd.MoveCursor(55, 5)
-		fmt.Printf("%sCredits:%s %s%d%s",
-			gd.Yellow, gd.Reset, gd.YellowHi, opponent.Credits, gd.Reset)
-
-		// Use card renderer for opponent's face-down cards
-		if game.CardRenderer != nil && game.CardRenderer.Database != nil {
-			for i := 0; i < len(opponent.Hand); i++ {
-				game.CardRenderer.RenderFaceDownCard(2+(i*11), 6)
-			}
-		} else {
-			// ASCII fallback for opponent
-			gd.MoveCursor(2, 7)
-			for i := 0; i < len(opponent.Hand); i++ {
-				fmt.Printf("%s[??]%s ", gd.Red, gd.Reset)
-			}
-		}
+	// Update header with current game info
+	currentPlayerName := ""
+	if game.Turn == 0 {
+		currentPlayerName = "► YOUR TURN ◄"
+	} else if game.Turn < len(game.Players) {
+		currentPlayerName = game.Players[game.Turn].Name + " thinking..."
 	}
 
-	// Display player's hand (face up)
+	game.Layout.UpdateHeader(game.Round, game.HandPot, game.SabaccPot, len(game.Deck.Cards), currentPlayerName)
+
+	// Update player information
+	if len(game.Players) > 1 {
+		// Update opponent (Player 2) info - don't show total
+		opponent := &game.Players[1]
+		game.Layout.UpdatePlayerInfo(1, opponent.Name+" (Opponent)", opponent.Credits, 0, false)
+
+		// Render opponent's cards (face down)
+		game.Layout.RenderPlayerCards(1, opponent.Hand, true, game.CardRenderer)
+	}
+
 	if len(game.Players) > 0 {
+		// Update human player info with total
 		player := &game.Players[0]
-		playerStartY := 15
-
-		gd.MoveCursor(1, playerStartY)
-		fmt.Printf("%sYour Hand:%s", gd.Cyan, gd.Reset)
-
-		// Calculate and display total
 		total := calculateHandTotal(player.Hand)
 		// Add static field cards to total
 		for _, card := range player.StaticField {
 			total += card.Value
 		}
 
-		gd.MoveCursor(55, playerStartY)
-		fmt.Printf("%sTotal:%s %s  %sCredits:%s %s%d%s",
-			gd.Yellow, gd.Reset, displayHandValue(total),
-			gd.Yellow, gd.Reset, gd.YellowHi, player.Credits, gd.Reset)
+		game.Layout.UpdatePlayerInfo(0, "YOUR HAND ("+player.Name+")", player.Credits, total, true)
 
-		// Use card renderer for player's cards
-		if game.CardRenderer != nil && game.CardRenderer.Database != nil {
-			game.CardRenderer.RenderCards(player.Hand, 2, playerStartY+1)
-		} else {
-			// ASCII fallback for player
-			gd.MoveCursor(2, playerStartY+1)
-			for _, card := range player.Hand {
-				fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
-			}
-		}
+		// Render player's cards (face up)
+		game.Layout.RenderPlayerCards(0, player.Hand, false, game.CardRenderer)
 
-		// Display static field if present
-		if len(player.StaticField) > 0 {
-			staticY := playerStartY + 9
-			gd.MoveCursor(1, staticY)
-			fmt.Printf("%sStatic Field (Protected):%s", gd.Magenta, gd.Reset)
-
-			// Use card renderer for static field
-			if game.CardRenderer != nil && game.CardRenderer.Database != nil {
-				game.CardRenderer.RenderCards(player.StaticField, 2, staticY+1)
-			} else {
-				// ASCII fallback for static field
-				gd.MoveCursor(2, staticY+1)
-				for _, card := range player.StaticField {
-					fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
-				}
-			}
-		}
-	}
-
-	// Game status and actions
-	actionY := 28
-	if len(game.Players) > 0 && len(game.Players[0].StaticField) > 0 {
-		actionY = 34 // Move down if static field is displayed
-	}
-
-	gd.MoveCursor(1, actionY)
-	if game.Turn == 0 {
-		fmt.Print(gd.GreenHi + "► YOUR TURN ◄" + gd.Reset)
-	} else if game.Turn < len(game.Players) {
-		fmt.Printf("%s%s is thinking...%s",
-			gd.YellowHi, game.Players[game.Turn].Name, gd.Reset)
+		// Render static field
+		game.Layout.RenderStaticField(player.StaticField, game.CardRenderer)
 	}
 }
 
