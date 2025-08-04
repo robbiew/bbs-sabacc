@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/eiannone/keyboard"
@@ -31,10 +32,10 @@ func waitForKey() {
 // showRules displays the Classic Sabacc rules (updated for West End Games rules)
 func showRules() {
 	gd.ClearScreen()
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + strings.Repeat("\xcd", 43) + "\n" + gd.Reset)
 	fmt.Print(gd.CyanHi + "           CLASSIC SABACC RULES\n" + gd.Reset)
 	fmt.Print(gd.CyanHi + "            West End Games (1989)\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + strings.Repeat("\xcd", 43) + "\n\n" + gd.Reset)
 
 	fmt.Print(gd.Yellow + "OBJECTIVE:\n" + gd.Reset)
 	fmt.Print(gd.White + "Get the highest card total that is ≤ 23.\n\n" + gd.Reset)
@@ -56,9 +57,9 @@ func showRules() {
 	waitForKey()
 
 	gd.ClearScreen()
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + strings.Repeat("\xcd", 43) + "\n" + gd.Reset)
 	fmt.Print(gd.CyanHi + "            TURN STRUCTURE\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + strings.Repeat("\xcd", 43) + "\n\n" + gd.Reset)
 
 	fmt.Print(gd.Yellow + "EACH TURN HAS 4 PHASES:\n" + gd.Reset)
 	fmt.Print(gd.White + "1. " + gd.CyanHi + "BET:" + gd.White + " Check/Call, Raise, or Fold\n" + gd.Reset)
@@ -81,9 +82,9 @@ func showRules() {
 	waitForKey()
 
 	gd.ClearScreen()
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + strings.Repeat("\xcd", 43) + "\n" + gd.Reset)
 	fmt.Print(gd.CyanHi + "              DECK & CARDS\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + strings.Repeat("\xcd", 43) + "\n\n" + gd.Reset)
 
 	fmt.Print(gd.Yellow + "76-CARD DECK:\n" + gd.Reset)
 	fmt.Print(gd.White + "60 Numbered Cards (1-15 in each suit)\n" + gd.Reset)
@@ -114,9 +115,9 @@ func showRules() {
 // showStats displays player statistics (updated to mention Classic Sabacc)
 func showStats() {
 	gd.ClearScreen()
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + strings.Repeat("\xcd", 43) + "\n" + gd.Reset)
 	fmt.Print(gd.CyanHi + "            PLAYER STATISTICS\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
+	fmt.Print(gd.CyanHi + strings.Repeat("\xcd", 43) + "\n\n" + gd.Reset)
 
 	fmt.Print(gd.Yellow + "Player: " + gd.CyanHi + game.User.Alias + gd.Reset + "\n\n")
 

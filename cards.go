@@ -254,9 +254,9 @@ func (db *CardDatabase) CreateDefault() (*CardDatabase, error) {
 	// Add face-down card
 	cardData["BACK"] = db.generateBackCardANSI()
 
-	// Set standard dimensions
-	db.CardWidth = 9
-	db.CardHeight = 7
+	// Set standard dimensions - diamond shaped Sabacc cards
+	db.CardWidth = 6  // Diamond cards are narrower
+	db.CardHeight = 5 // Diamond cards are 5 lines high
 
 	// Write header
 	header := make([]byte, 32)
@@ -329,20 +329,18 @@ func (db *CardDatabase) CreateDefault() (*CardDatabase, error) {
 }
 
 // generateCardANSI creates ANSI art for a card
-// generateCardANSI creates ANSI art for a card using CP437 characters
+// generateCardANSI creates ANSI art for a card using the hexagonal Sabacc shape
 func (db *CardDatabase) generateCardANSI(card Card) []byte {
 	var buffer bytes.Buffer
 
 	if card.Suit == "BACK" || card.String() == "BACK" {
-		// Special case for back card using CP437 characters
+		// Diamond-shaped back card
 		lines := []string{
-			"\x1b[31m\xda\xc4\xc4\xc4\xc4\xc4\xc4\xc4\xbf\x1b[0m",             // ┌───────┐
-			"\x1b[31m\xb3\x1b[37;1m \xb0\xb0\xb0\xb0\xb0 \x1b[31m\xb3\x1b[0m", // │ ░░░░░ │
-			"\x1b[31m\xb3\x1b[37;1m \xb0\xdb\xdb\xdb\xb0 \x1b[31m\xb3\x1b[0m", // │ ░███░ │
-			"\x1b[31m\xb3\x1b[37;1m \xb0\xb0\xb0\xb0\xb0 \x1b[31m\xb3\x1b[0m", // │ ░░░░░ │
-			"\x1b[31m\xb3\x1b[37;1m \xb0\xdb\xdb\xdb\xb0 \x1b[31m\xb3\x1b[0m", // │ ░███░ │
-			"\x1b[31m\xb3\x1b[37;1m \xb0\xb0\xb0\xb0\xb0 \x1b[31m\xb3\x1b[0m", // │ ░░░░░ │
-			"\x1b[31m\xc0\xc4\xc4\xc4\xc4\xc4\xc4\xc4\xd9\x1b[0m",             // └───────┘
+			"  \x1b[31m\xdb\xdb\x1b[1m\xdb\x1b[0m",
+			" \x1b[31m\xdb\xdb\xdb\xdb\x1b[1m\xdb\x1b[0m",
+			"\x1b[31m\xdb\x1b[30;41m  \x1b[1;37m?\x1b[0;30;41m  \x1b[1;31;40m\xdb\x1b[0m",
+			" \x1b[31m\xdb\xdb\xdb\xdb\x1b[1m\xdb\x1b[0m",
+			"  \x1b[31m\xdb\xdb\x1b[1m\xdb\x1b[0m",
 		}
 
 		for i, line := range lines {
@@ -355,87 +353,49 @@ func (db *CardDatabase) generateCardANSI(card Card) []byte {
 		return buffer.Bytes()
 	}
 
-	// Regular card using proper CP437 box drawing characters
+	// Regular card using diamond/hexagonal shape like reference
 	var displayValue string
 	if card.Suit == "Arcana" {
 		displayValue = card.String() // This will be "Id", "De", etc.
 		if len(displayValue) > 2 {
 			displayValue = displayValue[:2]
 		}
-		// Pad arcana to 2 chars if needed
-		for len(displayValue) < 2 {
-			displayValue = displayValue + " "
-		}
 	} else {
 		displayValue = fmt.Sprintf("%d", card.Value)
 	}
 
-	// Get proper color code (30-37 range)
+	// Get proper color codes for suit
 	var colorCode string
+	var bgColorCode string
 	switch card.Suit {
 	case SuitSabers:
-		colorCode = "34" // Blue
+		colorCode = "34"   // Blue text
+		bgColorCode = "44" // Blue background
 	case SuitFlasks:
-		colorCode = "32" // Green
+		colorCode = "32"   // Green text
+		bgColorCode = "42" // Green background
 	case SuitCoins:
-		colorCode = "33" // Yellow
+		colorCode = "33"   // Yellow text
+		bgColorCode = "43" // Yellow background
 	case SuitStaves:
-		colorCode = "31" // Red
+		colorCode = "31"   // Red text
+		bgColorCode = "41" // Red background
 	case "Arcana":
-		colorCode = "35" // Magenta
+		colorCode = "35"   // Magenta text
+		bgColorCode = "45" // Magenta background
 	default:
-		colorCode = "37" // White
+		colorCode = "37"   // White text
+		bgColorCode = "47" // White background
 	}
 
-	// Get proper suit symbol using CP437
-	var suitChar string
-	switch card.Suit {
-	case SuitSabers:
-		suitChar = "\x06" // CP437 spade ♠
-	case SuitFlasks:
-		suitChar = "\x04" // CP437 diamond ♦
-	case SuitCoins:
-		suitChar = "\x05" // CP437 club ♣
-	case SuitStaves:
-		suitChar = "\x03" // CP437 heart ♥
-	case "Arcana":
-		suitChar = "\x0f" // CP437 star ☼
-	default:
-		suitChar = "?"
-	}
-
-	// Build card using CP437 box drawing characters
-	// Card format: 9 chars wide, 7 chars tall
-	// ┌───────┐
-	// │XX     │  (value left-aligned, then spaces)
-	// │       │
-	// │   S   │  (suit centered)
-	// │       │
-	// │     XX│  (spaces, then value right-aligned)
-	// └───────┘
-
-	// Create top line: value + padding to 7 chars total
-	topLine := displayValue
-	for len(topLine) < 7 {
-		topLine += " "
-	}
-
-	// Create bottom line: padding + value to 7 chars total
-	bottomLine := ""
-	spacesNeeded := 7 - len(displayValue)
-	for i := 0; i < spacesNeeded; i++ {
-		bottomLine += " "
-	}
-	bottomLine += displayValue
-
+	// Create diamond-shaped card like the reference (5 lines)
+	// Line format matches the ANSI reference provided
 	lines := []string{
-		"\x1b[" + colorCode + "m\xda\xc4\xc4\xc4\xc4\xc4\xc4\xc4\xbf\x1b[0m",                        // ┌───────┐
-		"\x1b[" + colorCode + "m\xb3\x1b[37;1m" + topLine + "\x1b[" + colorCode + "m\xb3\x1b[0m",    // │XX     │
-		"\x1b[" + colorCode + "m\xb3       \xb3\x1b[0m",                                             // │       │
-		"\x1b[" + colorCode + "m\xb3   " + suitChar + "   \xb3\x1b[0m",                              // │   S   │
-		"\x1b[" + colorCode + "m\xb3       \xb3\x1b[0m",                                             // │       │
-		"\x1b[" + colorCode + "m\xb3\x1b[37;1m" + bottomLine + "\x1b[" + colorCode + "m\xb3\x1b[0m", // │     XX│
-		"\x1b[" + colorCode + "m\xc0\xc4\xc4\xc4\xc4\xc4\xc4\xc4\xd9\x1b[0m",                        // └───────┘
+		fmt.Sprintf("  \x1b[%sm\xdb\xdb\x1b[1m\xdb\x1b[0m", colorCode),
+		fmt.Sprintf(" \x1b[%sm\xdb\xdb\xdb\xdb\x1b[1m\xdb\x1b[0m", colorCode),
+		fmt.Sprintf("\x1b[%sm\xdb\x1b[30;%sm  \x1b[1;33m%s\x1b[0;30;%sm  \x1b[1;%s;40m\xdb\x1b[0m", colorCode, bgColorCode, displayValue, bgColorCode, colorCode),
+		fmt.Sprintf(" \x1b[%sm\xdb\xdb\xdb\xdb\x1b[1m\xdb\x1b[0m", colorCode),
+		fmt.Sprintf("  \x1b[%sm\xdb\xdb\x1b[1m\xdb\x1b[0m", colorCode),
 	}
 
 	for i, line := range lines {
@@ -458,7 +418,6 @@ func (db *CardDatabase) generateBackCardANSI() []byte {
 		"\x1b[31m\xb3\x1b[37;1m \xb0\xdb\xdb\xdb\xb0 \x1b[31m\xb3\x1b[0m", // │ ░███░ │
 		"\x1b[31m\xb3\x1b[37;1m \xb0\xb0\xb0\xb0\xb0 \x1b[31m\xb3\x1b[0m", // │ ░░░░░ │
 		"\x1b[31m\xb3\x1b[37;1m \xb0\xdb\xdb\xdb\xb0 \x1b[31m\xb3\x1b[0m", // │ ░███░ │
-		"\x1b[31m\xb3\x1b[37;1m \xb0\xb0\xb0\xb0\xb0 \x1b[31m\xb3\x1b[0m", // │ ░░░░░ │
 		"\x1b[31m\xc0\xc4\xc4\xc4\xc4\xc4\xc4\xc4\xd9\x1b[0m",             // └───────┘
 	}
 

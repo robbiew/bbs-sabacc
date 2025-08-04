@@ -468,7 +468,7 @@ func createANSIPreview() error {
 
 	for _, set := range previewSets {
 		preview.WriteString(YELLOW_HI + set.title + ":\n" + RESET)
-		preview.WriteString(strings.Repeat("─", len(set.title)+1) + "\n")
+		preview.WriteString(strings.Repeat("\xc4", len(set.title)+1) + "\n")
 
 		// Get card data for this set
 		var cardLines [][]string
@@ -512,13 +512,13 @@ func createANSIPreview() error {
 			// If card not found, create placeholder
 			if !cardFound[i] {
 				placeholder := []string{
-					"┌───────┐",
-					"│ ERROR │",
-					"│       │",
-					"│   ?   │",
-					"│       │",
-					"│ ERROR │",
-					"└───────┘",
+					"\xda\xc4\xc4\xc4\xc4\xc4\xc4\xc4\xbf",
+					"\xb3 ERROR \xb3",
+					"\xb3       \xb3",
+					"\xb3   ?   \xb3",
+					"\xb3       \xb3",
+					"\xb3 ERROR \xb3",
+					"\xc0\xc4\xc4\xc4\xc4\xc4\xc4\xc4\xd9",
 				}
 				if len(cardLines) <= i {
 					for k := len(cardLines); k <= i; k++ {

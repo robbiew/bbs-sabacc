@@ -237,10 +237,13 @@ func startNewGame() {
 	game.BettingPhase = false
 	game.ShiftOccurred = false
 
-	// Setup players
+	// Setup players: 1 human + 4 AI players to match UI layout
 	game.Players = []Player{
-		{Name: game.User.Alias, Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},
-		{Name: "Droid Dealer", Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},
+		{Name: game.User.Alias, Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false}, // Human player
+		{Name: "Phoo_ja", Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},       // AI 1 (top-left)
+		{Name: "Rsh-Taac", Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},      // AI 2 (top-right)
+		{Name: "Soladi", Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},        // AI 3 (bottom-left)
+		{Name: "Ky'Ola", Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},        // AI 4 (bottom-right)
 	}
 
 	// ANTE PHASE - Both players ante into both pots
@@ -255,10 +258,11 @@ func startNewGame() {
 
 	// Show ante message in game log
 	game.Layout.LogMessage("Both players ante 10 credits to each pot", "info")
-	game.Layout.DisplayMessage("Anging credits to pots...", "info", 0)
+	game.Layout.DisplayMessage("Anting credits to pots...", "info", 0)
 	time.Sleep(2 * time.Second)
 
 	// DEALING ROUND - Deal 2 cards to each player
+	game.Layout.LogMessage("Dealing 2 cards to each player", "info")
 	for i := 0; i < 2; i++ {
 		for j := range game.Players {
 			if len(game.Deck.Cards) > 0 {
@@ -268,9 +272,9 @@ func startNewGame() {
 		}
 	}
 
-	// Show dealing message in game log
-	game.Layout.LogMessage("Dealing 2 cards to each player", "info")
-	game.Layout.DisplayMessage("Dealing cards...", "info", 0)
+	// Show dealing completion message in game log
+	game.Layout.LogMessage("Cards dealt. Round 1 begins.", "info")
+	game.Layout.DisplayMessage("Cards dealt. Game begins...", "info", 0)
 	time.Sleep(2 * time.Second)
 
 	// Start game loop
@@ -553,19 +557,21 @@ func handleDrawPhase() {
 }
 
 func handleComputerTurn(canCall bool) {
-	computer := &game.Players[1]
+	computer := &game.Players[game.Turn]
 
 	if computer.Folded {
 		return
 	}
 
-	time.Sleep(2 * time.Second) // Simulate thinking
+	time.Sleep(1 * time.Second) // Simulate thinking
 
-	fmt.Printf("\n%s=== %s's Turn ===%s\n", gd.CyanHi, computer.Name, gd.Reset)
+	// Log the AI action in the game log
+	game.Layout.LogMessage(computer.Name+" is thinking...", "info")
+	time.Sleep(1 * time.Second)
 
 	// PHASE 1: BET (simplified AI)
-	fmt.Printf("\n%s%s checks.%s\n", gd.Yellow, computer.Name, gd.Reset)
-	time.Sleep(1 * time.Second)
+	game.Layout.LogMessage(computer.Name+" checks.", "action")
+	time.Sleep(500 * time.Millisecond)
 
 	// PHASE 2: ROLL
 	rollForShift()
@@ -575,13 +581,13 @@ func handleComputerTurn(canCall bool) {
 		total := calculateHandTotal(computer.Hand)
 		if total >= 20 && total <= 23 && game.Round >= 2 {
 			game.Called = true
-			fmt.Printf("\n%s%s calls the hand!%s\n", gd.GreenHi, computer.Name, gd.Reset)
-			time.Sleep(1 * time.Second)
+			game.Layout.LogMessage(computer.Name+" calls the hand!", "important")
+			time.Sleep(2 * time.Second)
 			return
 		}
 	}
 
-	// PHASE 4: DRAW
+	// PHASE 4: DRAW (AI decision logic)
 	if !game.Called {
 		total := calculateHandTotal(computer.Hand)
 
@@ -591,26 +597,26 @@ func handleComputerTurn(canCall bool) {
 				computer.Folded = true
 				computer.Credits -= 1
 				game.SabaccPot += 1
-				fmt.Printf("\n%s%s folds.%s\n", gd.Red, computer.Name, gd.Reset)
+				game.Layout.LogMessage(computer.Name+" folds.", "important")
 			} else if len(computer.Hand) > 2 {
 				// Trade a card
 				computer.Hand = computer.Hand[1:] // Remove first card (simplified)
 				if len(game.Deck.Cards) > 0 {
 					card := game.Deck.Deal()
 					computer.Hand = append(computer.Hand, card)
-					fmt.Printf("\n%s%s trades a card.%s\n", gd.Yellow, computer.Name, gd.Reset)
+					game.Layout.LogMessage(computer.Name+" trades a card.", "action")
 				}
 			} else {
-				fmt.Printf("\n%s%s stands.%s\n", gd.Yellow, computer.Name, gd.Reset)
+				game.Layout.LogMessage(computer.Name+" stands.", "action")
 			}
 		} else {
 			// Try to improve hand
 			if len(game.Deck.Cards) > 0 {
 				card := game.Deck.Deal()
 				computer.Hand = append(computer.Hand, card)
-				fmt.Printf("\n%s%s draws a card.%s\n", gd.Yellow, computer.Name, gd.Reset)
+				game.Layout.LogMessage(computer.Name+" draws a card.", "action")
 			} else {
-				fmt.Printf("\n%s%s stands.%s\n", gd.Yellow, computer.Name, gd.Reset)
+				game.Layout.LogMessage(computer.Name+" stands.", "action")
 			}
 		}
 	}
@@ -623,11 +629,13 @@ func rollForShift() {
 	dice1 := (time.Now().UnixNano() % 6) + 1
 	dice2 := ((time.Now().UnixNano() / 1000) % 6) + 1
 
-	fmt.Printf("\n%sRolling dice:%s %s%d%s, %s%d%s",
-		gd.Yellow, gd.Reset, gd.YellowHi, dice1, gd.Reset, gd.YellowHi, dice2, gd.Reset)
+	// Send dice roll message to game log
+	game.Layout.LogMessage(fmt.Sprintf("Rolling dice: %d, %d (No shift)", dice1, dice2), "info")
 
 	if dice1 == dice2 {
-		fmt.Printf("\n%sSABACC SHIFT! All hands shuffled!%s\n", gd.RedHi, gd.Reset)
+		// Update the message to show shift occurred
+		game.Layout.LogMessage(fmt.Sprintf("Rolling dice: %d, %d", dice1, dice2), "info")
+		game.Layout.LogMessage("SABACC SHIFT! All hands shuffled!", "important")
 
 		// Collect all cards not in static field
 		allCards := []Card{}
@@ -675,7 +683,6 @@ func rollForShift() {
 
 		time.Sleep(3 * time.Second)
 	} else {
-		fmt.Printf(" %s(No shift)%s\n", gd.Green, gd.Reset)
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -816,18 +823,19 @@ func displayGameScreen() {
 
 	game.Layout.UpdateHeader(game.Round, game.HandPot, game.SabaccPot, len(game.Deck.Cards), currentPlayerName)
 
-	// Update player information
-	if len(game.Players) > 1 {
-		// Update opponent (Player 2) info - don't show total
-		opponent := &game.Players[1]
-		game.Layout.UpdatePlayerInfo(1, opponent.Name+" (Opponent)", opponent.Credits, 0, false)
+	// Update all AI players (indexes 1-4)
+	for i := 1; i < len(game.Players) && i <= 4; i++ {
+		aiPlayer := &game.Players[i]
 
-		// Render opponent's cards (face down)
-		game.Layout.RenderPlayerCards(1, opponent.Hand, true, game.CardRenderer)
+		// Update AI player info (don't show total)
+		game.Layout.UpdatePlayerInfo(i, aiPlayer.Name, aiPlayer.Credits, 0, false)
+
+		// Render AI player's cards (as CP$37 blocks)
+		game.Layout.RenderPlayerCards(i, aiPlayer.Hand, true, game.CardRenderer)
 	}
 
+	// Update human player (index 0)
 	if len(game.Players) > 0 {
-		// Update human player info with total
 		player := &game.Players[0]
 		total := calculateHandTotal(player.Hand)
 		// Add static field cards to total
@@ -835,7 +843,7 @@ func displayGameScreen() {
 			total += card.Value
 		}
 
-		game.Layout.UpdatePlayerInfo(0, "YOUR HAND ("+player.Name+")", player.Credits, total, true)
+		game.Layout.UpdatePlayerInfo(0, player.Name, player.Credits, total, true)
 
 		// Render player's cards (face up)
 		game.Layout.RenderPlayerCards(0, player.Hand, false, game.CardRenderer)
