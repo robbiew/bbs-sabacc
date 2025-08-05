@@ -576,10 +576,16 @@ func handleComputerTurn(canCall bool) {
 	// PHASE 2: ROLL
 	rollForShift()
 
-	// PHASE 3: CALL
+	// PHASE 3: CALL (Enhanced with visible card awareness)
 	if canCall {
 		total := calculateHandTotal(computer.Hand)
-		if total >= 20 && total <= 23 && game.Round >= 2 {
+		staticTotal := calculateHandTotal(computer.StaticField)
+		combinedTotal := total + staticTotal
+
+		// Enhanced calling logic based on visible cards
+		shouldCall := evaluateAICallDecision(game.Turn, combinedTotal)
+
+		if shouldCall && game.Round >= 2 {
 			game.Called = true
 			game.Layout.LogMessage(computer.Name+" calls the hand!", "important")
 			time.Sleep(2 * time.Second)
@@ -587,19 +593,32 @@ func handleComputerTurn(canCall bool) {
 		}
 	}
 
-	// PHASE 4: DRAW (AI decision logic)
+	// PHASE 4: STATIC FIELD MANAGEMENT (New!)
+	if !game.Called {
+		handleAIStaticField(game.Turn)
+	}
+
+	// PHASE 5: DRAW (Enhanced AI decision logic)
 	if !game.Called {
 		total := calculateHandTotal(computer.Hand)
+		staticTotal := calculateHandTotal(computer.StaticField)
+		combinedTotal := total + staticTotal
 
-		if total > 20 || total < -20 {
+		if combinedTotal > 23 || combinedTotal < -23 {
+			// Bombed out - must fold
+			computer.Folded = true
+			computer.Credits -= 1
+			game.SabaccPot += 1
+			game.Layout.LogMessage(computer.Name+" folds (bombed out).", "important")
+		} else if combinedTotal > 20 || combinedTotal < -20 {
 			// Risky hand, might fold or try to improve
-			if total > 23 || total < -23 {
+			if combinedTotal > 23 || combinedTotal < -23 {
 				computer.Folded = true
 				computer.Credits -= 1
 				game.SabaccPot += 1
 				game.Layout.LogMessage(computer.Name+" folds.", "important")
 			} else if len(computer.Hand) > 2 {
-				// Trade a card
+				// Trade a card (but not from static field)
 				computer.Hand = computer.Hand[1:] // Remove first card (simplified)
 				if len(game.Deck.Cards) > 0 {
 					card := game.Deck.Deal()
@@ -610,8 +629,9 @@ func handleComputerTurn(canCall bool) {
 				game.Layout.LogMessage(computer.Name+" stands.", "action")
 			}
 		} else {
-			// Try to improve hand
-			if len(game.Deck.Cards) > 0 {
+			// Try to improve hand based on visible card intelligence
+			drawDecision := evaluateAIDrawDecision(game.Turn, combinedTotal)
+			if drawDecision && len(game.Deck.Cards) > 0 {
 				card := game.Deck.Deal()
 				computer.Hand = append(computer.Hand, card)
 				game.Layout.LogMessage(computer.Name+" draws a card.", "action")
@@ -851,6 +871,281 @@ func displayGameScreen() {
 		// Render static field
 		game.Layout.RenderStaticField(player.StaticField, game.CardRenderer)
 	}
+}
+
+// Enhanced AI functions for 1989 West End Games rules compliance
+
+// evaluateAICallDecision determines if AI should call based on visible cards and hand strength
+func evaluateAICallDecision(playerIndex int, combinedTotal int) bool {
+	computer := &game.Players[playerIndex]
+
+	// Don't call if bombed out
+	if combinedTotal > 23 || combinedTotal < -23 || combinedTotal == 0 {
+		return false
+	}
+
+	// Strong call for Pure Sabacc or near-perfect hands
+	if combinedTotal == 23 {
+		return true // Pure Sabacc - definitely call
+	}
+
+	// Check for Idiot's Array potential
+	if isIdiotsArray(computer.Hand) {
+		return true // Idiot's Array beats Pure Sabacc
+	}
+
+	// Analyze visible cards from all players' static fields
+	visibleCards := getVisibleCardsFromStaticFields()
+
+	// Strong hands worth calling (20-22)
+	if combinedTotal >= 20 && combinedTotal <= 22 {
+		// More aggressive calling if opponents have visible weak cards
+		opponentStrength := assessOpponentStrengthFromVisibleCards(playerIndex, visibleCards)
+		if opponentStrength == "weak" {
+			return combinedTotal >= 20
+		} else if opponentStrength == "strong" {
+			return combinedTotal >= 22 // Only call with very strong hands
+		}
+		return combinedTotal >= 21 // Moderate calling threshold
+	}
+
+	// Conservative approach for medium hands (15-19)
+	if combinedTotal >= 15 && combinedTotal <= 19 {
+		// Only call if we can see opponents have weak visible cards
+		opponentStrength := assessOpponentStrengthFromVisibleCards(playerIndex, visibleCards)
+		return opponentStrength == "weak" && combinedTotal >= 18
+	}
+
+	return false // Don't call with weak hands
+}
+
+// handleAIStaticField manages AI static field placement and removal
+func handleAIStaticField(playerIndex int) {
+	computer := &game.Players[playerIndex]
+
+	if len(computer.Hand) == 0 {
+		return
+	}
+
+	// Strategy 1: Protect valuable cards before shifts
+	valuableCards := findValuableCardsToProtect(computer.Hand, computer.StaticField)
+
+	for _, cardIndex := range valuableCards {
+		if cardIndex < len(computer.Hand) {
+			// Move valuable card to static field
+			card := computer.Hand[cardIndex]
+			computer.Hand = append(computer.Hand[:cardIndex], computer.Hand[cardIndex+1:]...)
+			computer.StaticField = append(computer.StaticField, card)
+
+			game.Layout.LogMessage(fmt.Sprintf("%s places a card in Static Field", computer.Name), "action")
+			break // Only move one card per turn
+		}
+	}
+
+	// Strategy 2: Remove cards from static field if hand composition changed
+	if len(computer.StaticField) > 0 {
+		shouldRemove := evaluateStaticFieldRemoval(computer.Hand, computer.StaticField)
+		if shouldRemove >= 0 {
+			// Move card back to hand
+			card := computer.StaticField[shouldRemove]
+			computer.StaticField = append(computer.StaticField[:shouldRemove], computer.StaticField[shouldRemove+1:]...)
+			computer.Hand = append(computer.Hand, card)
+
+			game.Layout.LogMessage(fmt.Sprintf("%s removes a card from Static Field", computer.Name), "action")
+		}
+	}
+}
+
+// evaluateAIDrawDecision determines if AI should draw based on strategy and visible cards
+func evaluateAIDrawDecision(playerIndex int, combinedTotal int) bool {
+	computer := &game.Players[playerIndex]
+
+	// Never draw if already at optimal scores
+	if combinedTotal == 23 || isIdiotsArray(computer.Hand) {
+		return false
+	}
+
+	// Never draw if close to bombing out
+	if combinedTotal > 20 || combinedTotal < -20 {
+		return false
+	}
+
+	// Analyze visible cards to make informed decisions
+	visibleCards := getVisibleCardsFromStaticFields()
+	availableCardTypes := analyzeAvailableCards(visibleCards)
+
+	// Draw if we need specific cards and they're likely available
+	neededValue := 23 - combinedTotal
+
+	// Conservative drawing for good hands (15-20)
+	if combinedTotal >= 15 && combinedTotal <= 20 {
+		// Only draw if we can see beneficial cards haven't been taken
+		if neededValue > 0 && neededValue <= 8 {
+			return availableCardTypes[neededValue] > 0 // Draw if needed cards are available
+		}
+		return false
+	}
+
+	// More aggressive drawing for medium hands (5-14)
+	if combinedTotal >= 5 && combinedTotal <= 14 {
+		// Draw if it could help reach good range
+		return neededValue >= 3 && neededValue <= 18
+	}
+
+	// Desperate drawing for poor hands (below 5)
+	if combinedTotal < 5 {
+		return true // Need to improve urgently
+	}
+
+	return false
+}
+
+// Helper functions for AI intelligence
+
+// getVisibleCardsFromStaticFields returns all cards visible in static fields
+func getVisibleCardsFromStaticFields() []Card {
+	var visibleCards []Card
+
+	for _, player := range game.Players {
+		if !player.Folded {
+			// All static field cards are visible to opponents
+			visibleCards = append(visibleCards, player.StaticField...)
+		}
+	}
+
+	return visibleCards
+}
+
+// assessOpponentStrengthFromVisibleCards analyzes opponent strength based on visible cards
+func assessOpponentStrengthFromVisibleCards(playerIndex int, visibleCards []Card) string {
+	strongCardCount := 0
+	weakCardCount := 0
+
+	for i, player := range game.Players {
+		if i != playerIndex && !player.Folded && len(player.StaticField) > 0 {
+			// Analyze visible cards in opponent's static field
+			for _, card := range player.StaticField {
+				if card.Value >= 10 || card.Value <= -10 {
+					strongCardCount++
+				} else if card.Value >= -5 && card.Value <= 5 {
+					weakCardCount++
+				}
+			}
+		}
+	}
+
+	if strongCardCount > weakCardCount {
+		return "strong"
+	} else if weakCardCount > strongCardCount {
+		return "weak"
+	}
+	return "moderate"
+}
+
+// findValuableCardsToProtect identifies cards worth protecting in static field
+func findValuableCardsToProtect(hand []Card, staticField []Card) []int {
+	var valuableIndices []int
+
+	// Don't protect if already have too many cards in static field
+	if len(staticField) >= 2 {
+		return valuableIndices
+	}
+
+	for i, card := range hand {
+		// Protect high-value positive cards
+		if card.Value >= 10 && card.Value <= 15 {
+			valuableIndices = append(valuableIndices, i)
+		}
+		// Protect Idiot card (very valuable)
+		if card.Name == "Idiot" {
+			valuableIndices = append(valuableIndices, i)
+		}
+		// Protect cards that complete good combinations
+		if isPartOfGoodCombination(card, hand) {
+			valuableIndices = append(valuableIndices, i)
+		}
+	}
+
+	return valuableIndices
+}
+
+// evaluateStaticFieldRemoval determines if cards should be removed from static field
+func evaluateStaticFieldRemoval(hand []Card, staticField []Card) int {
+	// Remove cards if they're now less valuable
+	for i, staticCard := range staticField {
+		// Remove low-value cards if hand composition changed
+		if staticCard.Value > 0 && staticCard.Value < 5 {
+			// Check if we now have better cards in hand
+			handTotal := calculateHandTotal(hand)
+			if handTotal+staticCard.Value > 23 {
+				return i // Remove this card to avoid bombing out
+			}
+		}
+
+		// Remove cards that no longer serve strategic purpose
+		if !isPartOfGoodCombination(staticCard, append(hand, staticField...)) {
+			if len(hand) <= 2 { // Only if we have room in hand
+				return i
+			}
+		}
+	}
+
+	return -1 // Don't remove any cards
+}
+
+// analyzeAvailableCards estimates what cards might still be available
+func analyzeAvailableCards(visibleCards []Card) map[int]int {
+	cardCounts := make(map[int]int)
+
+	// Initialize with 1989 Classic Sabacc deck composition knowledge
+	for value := 1; value <= 15; value++ {
+		cardCounts[value] = 4 // 4 suits (60 cards total)
+	}
+
+	// Arcana cards: one copy each (16 cards total) - 1989 Classic Rules
+	arcanaValues := []int{-1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -17}
+	for _, value := range arcanaValues {
+		cardCounts[value] = 1 // Only 1 copy of each Arcana card
+	}
+
+	// Subtract visible cards from static fields
+	for _, card := range visibleCards {
+		if cardCounts[card.Value] > 0 {
+			cardCounts[card.Value]--
+		}
+	}
+
+	return cardCounts
+}
+
+// isPartOfGoodCombination checks if card contributes to valuable hand combinations
+func isPartOfGoodCombination(card Card, allCards []Card) bool {
+	// Check for Idiot's Array components
+	if card.Name == "Idiot" {
+		return true
+	}
+	if card.Value == 2 || card.Value == 3 {
+		// Check if we have other Idiot's Array components
+		hasIdiot := false
+		hasTwoOrThree := false
+		for _, c := range allCards {
+			if c.Name == "Idiot" {
+				hasIdiot = true
+			}
+			if (c.Value == 2 || c.Value == 3) && !(c.Value == card.Value && c.Suit == card.Suit) {
+				hasTwoOrThree = true
+			}
+		}
+		return hasIdiot || hasTwoOrThree
+	}
+
+	// High-value cards that help reach Pure Sabacc
+	total := calculateHandTotal(allCards)
+	if total+card.Value == 23 {
+		return true
+	}
+
+	return false
 }
 
 func showGameResults() {

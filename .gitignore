@@ -7,9 +7,15 @@
 *.dll
 *.so
 *.dylib
+*.a
+*.lib
+*.o
+*.obj
+*.bin
 
 # Linux binaries (executables without extension)
 sabacc
+cmd/build-cards/build-cards
 
 # Alternative: ignore all files without extension that are executable
 # This is more aggressive but catches most Linux binaries
@@ -71,5 +77,8 @@ Thumbs.db
 # Project-specific ignores
 door32.sys
 stats/
-*.conf
-ansi/*.ans
+
+# Generated card database files
+sabacc_cards.bin
+card_index.txt
+card_preview.ans

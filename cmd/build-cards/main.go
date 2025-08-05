@@ -96,12 +96,13 @@ const (
 )
 
 type CardDefinition struct {
-	ID     string
-	Value  int
-	Suit   string
-	Name   string
-	Symbol string
-	Color  string
+	ID      string
+	Value   int
+	Suit    string
+	Name    string
+	Symbol  string
+	Color   string
+	ColorHi string
 }
 
 func main() {
@@ -171,8 +172,8 @@ func buildCardDatabase() error {
 	copy(header[0:4], "SABC")                                      // Magic number
 	binary.LittleEndian.PutUint16(header[4:6], 1)                  // Version
 	binary.LittleEndian.PutUint16(header[6:8], uint16(len(cards))) // Card count
-	binary.LittleEndian.PutUint16(header[8:10], 5)                 // Standard width (diamond shape)
-	binary.LittleEndian.PutUint16(header[10:12], 5)                // Standard height (diamond shape)
+	binary.LittleEndian.PutUint16(header[8:10], 5)                 // Standard width (5 chars wide)
+	binary.LittleEndian.PutUint16(header[10:12], 5)                // Standard height (5 lines tall)
 	binary.LittleEndian.PutUint32(header[12:16], 32)               // Index offset
 
 	buffer.Write(header)
@@ -223,6 +224,22 @@ func buildCardDatabase() error {
 	fmt.Printf("Created database with %d cards (%d bytes)\n",
 		len(cards), buffer.Len())
 
+	// Debug: count card types
+	regularCount := 0
+	arcanaCount := 0
+	backCount := 0
+	for _, card := range cards {
+		switch card.Suit {
+		case "Sabers", "Flasks", "Coins", "Staves":
+			regularCount++
+		case "Arcana":
+			arcanaCount++
+		case "Back":
+			backCount++
+		}
+	}
+	fmt.Printf("Debug: Regular=%d, Arcana=%d, Back=%d, Total=%d\n", regularCount, arcanaCount, backCount, len(cards))
+
 	// Create a text index for reference
 	createCardIndex(cards)
 
@@ -232,137 +249,78 @@ func buildCardDatabase() error {
 func generateAllCards() []CardDefinition {
 	var cards []CardDefinition
 
-	// Traditional Sabacc suits - using CP437 constants
+	// 1989 West End Games Classic Sabacc suits
 	suits := []struct {
-		name   string
-		symbol string
-		color  string
-		letter string
+		name    string
+		symbol  string
+		color   string
+		ColorHi string
+		letter  string
 	}{
-		{"Sabers", CP437_UP_ARROW, BLUE, "S"}, // ↑ up arrow (representing sword/saber)
-		{"Flasks", CP437_DIAMOND, GREEN, "F"}, // ♦ diamond
-		{"Coins", CP437_STAR, YELLOW, "C"},    // ☼ sun symbol (representing coin)
-		{"Staves", CP437_HEART, RED, "T"},     // ♥ heart
+		{"Sabers", CP437_UP_ARROW, BLUE, BLUE_HI, "S"}, // ↑ up arrow (representing sword/saber)
+		{"Flasks", CP437_SPADE, GREEN, GREEN_HI, "F"},  // ♠ spade (representing a cup)
+		{"Coins", CP437_STAR, YELLOW, YELLOW_HI, "C"},  // ☼ sun symbol (representing a coin)
+		{"Staves", "|", RED, RED_HI, "T"},              // | vertical line (representing a stick)
 	}
 
+	// Regular numbered cards (1-15) for each suit = 60 cards total
 	for _, suit := range suits {
-		// Positive numbered cards (1-11)
-		for value := 1; value <= 11; value++ {
+		for value := 1; value <= 15; value++ {
 			cards = append(cards, CardDefinition{
-				ID:     fmt.Sprintf("+%d%s", value, suit.letter),
-				Value:  value,
-				Suit:   suit.name,
-				Symbol: suit.symbol,
-				Color:  suit.color,
-			})
-		}
-
-		// Negative numbered cards (1-11)
-		for value := 1; value <= 11; value++ {
-			cards = append(cards, CardDefinition{
-				ID:     fmt.Sprintf("-%d%s", value, suit.letter),
-				Value:  -value,
-				Suit:   suit.name,
-				Symbol: suit.symbol,
-				Color:  suit.color,
-			})
-		}
-
-		// Face cards for each suit
-		faceCards := []struct {
-			name  string
-			value int
-			id    string
-		}{
-			{"Commander", 12, "Co"},
-			{"Mistress", 13, "Mi"},
-			{"Master", 14, "Ma"},
-			{"Ace", 15, "Ac"},
-		}
-
-		for _, face := range faceCards {
-			cards = append(cards, CardDefinition{
-				ID:     fmt.Sprintf("%s%s", face.id, suit.letter),
-				Value:  face.value,
-				Suit:   suit.name,
-				Name:   fmt.Sprintf("%s of %s", face.name, suit.name),
-				Symbol: suit.symbol,
-				Color:  suit.color,
+				ID:      fmt.Sprintf("+%d%s", value, suit.letter),
+				Value:   value,
+				Suit:    suit.name,
+				Symbol:  suit.symbol,
+				Color:   suit.color,
+				ColorHi: suit.ColorHi,
 			})
 		}
 	}
 
-	// Special Sabacc cards (single cards, not pairs) - treat as Arcana type
-	specialCards := []struct {
-		name   string
-		value  int
-		abbrev string
-	}{
-		{"The Idiot", 0, "Id"},
-		{"The Evil One", -15, "Ev"},
-	}
-
-	for _, special := range specialCards {
-		cards = append(cards, CardDefinition{
-			ID:     special.abbrev,
-			Value:  special.value,
-			Suit:   "Arcana", // Changed from "Special" to "Arcana"
-			Name:   special.name,
-			Symbol: CP437_STAR,
-			Color:  MAGENTA_HI,
-		})
-	}
-
-	// Arcana cards (two copies each)
+	// Arcana cards (one copy each) = 16 cards total - 1989 Classic Rules
 	arcanaCards := []struct {
 		name   string
 		value  int
 		abbrev string
 	}{
-		{"Death", -13, "De"},
-		{"Strength", -8, "St"},
-		{"Moderation", -14, "Mo"},
-		{"Justice", -11, "Ju"},
-		{"Queen of Air and Darkness", -2, "Qu"},
-		{"Endurance", -12, "En"},
-		{"Balance", -11, "Ba"},
-		{"Demise", -13, "Dm"},
-		{"Destruction", -13, "Ds"},
-		{"Despair", -14, "Dp"},
-		{"Failure", -15, "Fa"},
-		{"Futility", -15, "Fu"},
+		{"Death", -1, "De"},
+		{"Strength", -2, "St"},
+		{"Moderation", -3, "Mo"},
+		{"Evil One", -4, "Ev"},
+		{"Justice", -5, "Ju"},
+		{"Queen of Air and Darkness", -6, "Qu"},
+		{"Endurance", -7, "En"},
+		{"Balance", -8, "Ba"},
+		{"Demise", -9, "Dm"},
+		{"Destruction", -10, "Ds"},
+		{"Despair", -11, "Dp"},
+		{"Failure", -12, "Fa"},
+		{"Futility", -13, "Fu"},
+		{"Mistress", -14, "Mi"},
+		{"Idiot", -15, "Id"},
 		{"Star", -17, "Sr"},
 	}
 
 	for _, arcana := range arcanaCards {
-		// First copy
 		cards = append(cards, CardDefinition{
-			ID:     arcana.abbrev,
-			Value:  arcana.value,
-			Suit:   "Arcana",
-			Name:   arcana.name,
-			Symbol: CP437_STAR,
-			Color:  MAGENTA,
-		})
-
-		// Second copy (with "2" suffix)
-		cards = append(cards, CardDefinition{
-			ID:     arcana.abbrev + "2",
-			Value:  arcana.value,
-			Suit:   "Arcana",
-			Name:   arcana.name,
-			Symbol: CP437_STAR,
-			Color:  MAGENTA,
+			ID:      arcana.abbrev,
+			Value:   arcana.value,
+			Suit:    "Arcana",
+			Name:    arcana.name,
+			Symbol:  CP437_STAR,
+			Color:   MAGENTA,
+			ColorHi: MAGENTA_HI,
 		})
 	}
 
 	// Face-down card
 	cards = append(cards, CardDefinition{
-		ID:     "BACK",
-		Value:  0,
-		Suit:   "Back",
-		Symbol: "░",
-		Color:  RED,
+		ID:      "BACK",
+		Value:   0,
+		Suit:    "Back",
+		Symbol:  "░",
+		Color:   RED,
+		ColorHi: RED_HI,
 	})
 
 	return cards
@@ -374,28 +332,36 @@ func generateCardANSI(card CardDefinition) []byte {
 	// Determine background and foreground colors based on suit
 	var bgColor string
 	var fgColor string
+	var hiColor string
 	switch card.Suit {
 	case "Sabers":
 		bgColor = BG_BLUE
+		hiColor = BLUE_HI
 		fgColor = WHITE_HI // Bright white for good contrast on blue
 	case "Flasks":
 		bgColor = BG_GREEN
 		fgColor = BLACK // Black for good contrast on green
+		hiColor = GREEN_HI
 	case "Coins":
 		bgColor = BG_YELLOW
 		fgColor = BLACK // Black for good contrast on yellow
+		hiColor = YELLOW_HI
 	case "Staves":
 		bgColor = BG_RED
 		fgColor = WHITE_HI // Bright white for good contrast on red
+		hiColor = RED_HI
 	case "Arcana":
 		bgColor = BG_MAGENTA
 		fgColor = WHITE_HI // Bright white for good contrast on magenta
+		hiColor = MAGENTA_HI
 	case "Back":
 		bgColor = BG_RED
 		fgColor = WHITE_HI // Bright white for good contrast on red
+		hiColor = RED_HI
 	default:
 		bgColor = BG_BLACK
 		fgColor = WHITE_HI // Bright white for good contrast on black
+		hiColor = BLUE_HI
 	}
 
 	// Prepare display value for the card
@@ -420,22 +386,22 @@ func generateCardANSI(card CardDefinition) []byte {
 		suitSymbol = card.Symbol
 	}
 
-	// Create solid diamond shape using background colors and spaces - ALL LINES EXACTLY 7 CHARACTERS WIDE
+	// Create card shape using background colors and spaces - ALL LINES EXACTLY 5 CHARACTERS WIDE
 	lines := []string{
-		" " + bgColor + fgColor + "   " + RESET + " " + "  ",        // Line 1: "    " (7 chars)
-		bgColor + fgColor + "  " + suitSymbol + "  " + RESET + "  ", // Line 2: " ♠ " (7 chars)
+		" " + bgColor + fgColor + "  " + bgColor + hiColor + RIGHT_HALF_BLOCK + RESET + " ",        // Line 1: "     " (5 chars)
+		bgColor + fgColor + "  " + suitSymbol + " " + bgColor + hiColor + RIGHT_HALF_BLOCK + RESET, // Line 2: "  ♠  " (5 chars)
 	}
 
-	// Line 3: " 1 " (7 chars) - full background color fill
+	// Line 3: " 1▐" (5 chars) - value centered in 3 chars + border
 	middlePadding := (3 - len(displayValue)) / 2
 	remainingPadding := 3 - len(displayValue) - middlePadding
-	middleLine := bgColor + fgColor + " " + strings.Repeat(" ", middlePadding) + displayValue + strings.Repeat(" ", remainingPadding) + " " + RESET + "  "
+	middleLine := bgColor + fgColor + " " + strings.Repeat(" ", middlePadding) + displayValue + strings.Repeat(" ", remainingPadding) + bgColor + hiColor + RIGHT_HALF_BLOCK + RESET
 	lines = append(lines, middleLine)
 
-	// Bottom lines - mirror the top, all exactly 7 chars
+	// Bottom lines - mirror the top, all exactly 5 chars
 	lines = append(lines,
-		bgColor+fgColor+"  "+suitSymbol+"  "+RESET+"  ", // Line 4: " ♠ " (7 chars)
-		" "+bgColor+fgColor+"   "+RESET+" "+"  ")        // Line 5: "    " (7 chars)
+		bgColor+fgColor+"  "+suitSymbol+" "+bgColor+hiColor+RIGHT_HALF_BLOCK+RESET, // Line 4: "  ♠  " (5 chars)
+		" "+bgColor+fgColor+"  "+bgColor+hiColor+RIGHT_HALF_BLOCK+RESET+" ")        // Line 5: "     " (5 chars)
 
 	// Write the lines to buffer
 	for i, line := range lines {
@@ -467,9 +433,8 @@ func createCardIndex(cards []CardDefinition) {
 	}
 
 	buffer.WriteString(fmt.Sprintf("\nTotal cards: %d\n", len(cards)))
-	buffer.WriteString("Numbered cards: 88 (11 positive + 11 negative per suit × 4 suits)\n")
-	buffer.WriteString("Face cards: 16 (Commander, Mistress, Master, Ace per suit × 4 suits)\n")
-	buffer.WriteString("Arcana cards: 28 (13 types × 2 copies + The Idiot + The Evil One)\n")
+	buffer.WriteString("Regular cards: 60 (15 per suit × 4 suits)\n")
+	buffer.WriteString("Arcana cards: 16 (16 types × 1 copy each)\n")
 	buffer.WriteString("Back card: 1\n")
 	buffer.WriteString(fmt.Sprintf("Total: %d cards\n", len(cards)))
 
@@ -566,7 +531,7 @@ func createANSIPreview() error {
 		color       string
 	}{
 		{"Sample Sabers (" + CP437_UP_ARROW + ")", "Positive values from the Sabers suit", []string{"+1S", "+5S", "+10S", "AcS"}, BLUE_HI},
-		{"Other Suits:", "One card from each traditional suit", []string{"+1F", "+1C", "+1T", "BACK"}, GREEN_HI},
+		{"Other Suits:", "Including negative cards from each suit", []string{"-1F", "-5C", "-11T", "BACK"}, GREEN_HI},
 		{"Arcana Cards:", "Mystical cards with special powers", []string{"Id", "De", "St", "Ba"}, MAGENTA_HI},
 	}
 
@@ -606,13 +571,13 @@ func createANSIPreview() error {
 				cardANSI := generateCardANSI(card)
 				lines = strings.Split(string(cardANSI), "\r\n")
 			} else {
-				// Create a better-looking error card (CP437)
+				// Create a better-looking error card (CP437) - 5 characters wide
 				lines = []string{
-					RED_HI + TOP_LEFT_CORNER + HORIZONTAL_LINE + HORIZONTAL_LINE + HORIZONTAL_LINE + HORIZONTAL_LINE + HORIZONTAL_LINE + TOP_RIGHT_CORNER + RESET,
-					RED_HI + VERTICAL_LINE + WHITE + "ERROR" + RED_HI + VERTICAL_LINE + RESET,
-					RED_HI + VERTICAL_LINE + YELLOW + "  ?  " + RED_HI + VERTICAL_LINE + RESET,
-					RED_HI + VERTICAL_LINE + WHITE + "MISS " + RED_HI + VERTICAL_LINE + RESET,
-					RED_HI + BOTTOM_LEFT_CORNER + HORIZONTAL_LINE + HORIZONTAL_LINE + HORIZONTAL_LINE + HORIZONTAL_LINE + HORIZONTAL_LINE + BOTTOM_RIGHT_CORNER + RESET,
+					RED_HI + TOP_LEFT_CORNER + HORIZONTAL_LINE + HORIZONTAL_LINE + HORIZONTAL_LINE + TOP_RIGHT_CORNER + RESET,
+					RED_HI + VERTICAL_LINE + WHITE + "ERR" + RED_HI + VERTICAL_LINE + RESET,
+					RED_HI + VERTICAL_LINE + YELLOW + " ? " + RED_HI + VERTICAL_LINE + RESET,
+					RED_HI + VERTICAL_LINE + WHITE + "MIS" + RED_HI + VERTICAL_LINE + RESET,
+					RED_HI + BOTTOM_LEFT_CORNER + HORIZONTAL_LINE + HORIZONTAL_LINE + HORIZONTAL_LINE + BOTTOM_RIGHT_CORNER + RESET,
 				}
 			}
 
@@ -633,10 +598,10 @@ func createANSIPreview() error {
 			if i > 0 {
 				labelLine += "  "
 			}
-			// Center the card ID under each card
-			padding := (7 - len(cardID)) / 2
+			// Center the card ID under each card (5 characters wide)
+			padding := (5 - len(cardID)) / 2
 			labelLine += strings.Repeat(" ", padding) + YELLOW_HI + cardID + RESET
-			remainingPadding := 7 - len(cardID) - padding
+			remainingPadding := 5 - len(cardID) - padding
 			labelLine += strings.Repeat(" ", remainingPadding)
 		}
 		preview.WriteString(labelLine + "\n")
@@ -646,12 +611,12 @@ func createANSIPreview() error {
 			line := ""
 			for cardIdx, cardData := range cardLines {
 				if cardIdx > 0 {
-					line += "    " // More space between cards (4 spaces)
+					line += "  " // Space between cards (2 spaces)
 				}
 				if row < len(cardData) {
 					line += cardData[row]
 				} else {
-					line += strings.Repeat(" ", 7) // Empty space if line missing
+					line += strings.Repeat(" ", 5) // Empty space if line missing (5 chars)
 				}
 			}
 			preview.WriteString(line + "\n")
@@ -668,24 +633,16 @@ func createANSIPreview() error {
 	preview.WriteString(CYAN_HI + DOUBLE_VERTICAL_LINE + "         " + WHITE_HI + "DATABASE INFORMATION" + CYAN_HI + "         " + DOUBLE_VERTICAL_LINE + "\n" + RESET)
 	preview.WriteString(CYAN_HI + DOUBLE_BOTTOM_LEFT_CORNER + strings.Repeat(DOUBLE_HORIZONTAL_LINE, 38) + DOUBLE_BOTTOM_RIGHT_CORNER + "\n" + RESET)
 
-	// Calculate statistics
+	// Calculate statistics for 1989 Classic Sabacc
 	totalCards := len(allCards)
-	numberedCards := 0
-	faceCards := 0
-	specialCards := 0
+	regularCards := 0
 	arcanaCards := 0
 	backCards := 0
 
 	for _, card := range allCards {
 		switch card.Suit {
 		case "Sabers", "Flasks", "Coins", "Staves":
-			if card.Value <= 11 && card.Value >= -11 {
-				numberedCards++
-			} else {
-				faceCards++
-			}
-		case "Special":
-			specialCards++
+			regularCards++
 		case "Arcana":
 			arcanaCards++
 		case "Back":
@@ -699,20 +656,19 @@ func createANSIPreview() error {
 	preview.WriteString(fmt.Sprintf("File size: %s%d%s bytes\n", YELLOW_HI, totalCards*20+int(avgCardSize*float64(totalCards)), RESET))
 	preview.WriteString(fmt.Sprintf("Average card size: %s%.1f%s bytes\n", YELLOW_HI, avgCardSize, RESET))
 
-	// Enhanced card breakdown with readable constants (CP437)
+	// Enhanced card breakdown with readable constants (CP437) - 1989 Classic Rules
 	preview.WriteString("\n" + WHITE_HI + "Card Breakdown:\n" + RESET)
-	preview.WriteString(fmt.Sprintf("%s%s Numbered cards: %s%d%s (11 positive + 11 negative per suit %s 4 suits)\n", TOP_LEFT_CORNER, HORIZONTAL_LINE, GREEN_HI, numberedCards, RESET, CP437_STAR))
-	preview.WriteString(fmt.Sprintf("%s%s Face cards: %s%d%s (Commander, Mistress, Master, Ace per suit %s 4 suits)\n", LEFT_T_JUNCTION, HORIZONTAL_LINE, BLUE_HI, faceCards, RESET, CP437_STAR))
-	preview.WriteString(fmt.Sprintf("%s%s Arcana cards: %s%d%s (13 types %s 2 copies + The Idiot + The Evil One)\n", LEFT_T_JUNCTION, HORIZONTAL_LINE, CYAN_HI, arcanaCards, RESET, CP437_STAR))
+	preview.WriteString(fmt.Sprintf("%s%s Regular cards: %s%d%s (15 per suit %s 4 suits)\n", TOP_LEFT_CORNER, HORIZONTAL_LINE, GREEN_HI, regularCards, RESET, CP437_STAR))
+	preview.WriteString(fmt.Sprintf("%s%s Arcana cards: %s%d%s (16 types %s 1 copy each)\n", LEFT_T_JUNCTION, HORIZONTAL_LINE, CYAN_HI, arcanaCards, RESET, CP437_STAR))
 	preview.WriteString(fmt.Sprintf("%s%s Back card: %s%d%s\n", BOTTOM_LEFT_CORNER, HORIZONTAL_LINE, RED_HI, backCards, RESET))
 
 	// Suit legend with CP437 symbols
 	preview.WriteString(fmt.Sprintf("\n%sSuits:%s %sSabers%s(%s%s%s) %sFlasks%s(%s%s%s) %sCoins%s(%s%s%s) %sStaves%s(%s%s%s) %sArcana%s(%s%s%s)\n",
 		WHITE_HI, RESET,
-		BLUE, RESET, BLUE, CP437_SPADE, RESET,
-		GREEN, RESET, GREEN, CP437_DIAMOND, RESET,
-		YELLOW, RESET, YELLOW, CP437_CLUB, RESET,
-		RED, RESET, RED, CP437_HEART, RESET,
+		BLUE, RESET, BLUE, CP437_UP_ARROW, RESET,
+		GREEN, RESET, GREEN, CP437_SPADE, RESET,
+		YELLOW, RESET, YELLOW, CP437_STAR, RESET,
+		RED, RESET, RED, "|", RESET,
 		MAGENTA, RESET, MAGENTA, CP437_STAR, RESET))
 
 	// Footer with generation info using readable constants - exactly 39 characters

@@ -239,16 +239,11 @@ func (db *CardDatabase) CreateDefault() (*CardDatabase, error) {
 	}
 
 	for _, arcana := range arcanaCards {
-		// Two copies of each arcana card
-		for copy := 0; copy < 2; copy++ {
-			card := Card{Value: arcana.value, Suit: "Arcana", Name: arcana.name}
-			cardID := arcana.abbrev
-			if copy == 1 {
-				cardID += "2" // Second copy
-			}
-			ansiData := db.generateCardANSI(card)
-			cardData[cardID] = ansiData
-		}
+		// One copy of each arcana card (1989 Classic Rules)
+		card := Card{Value: arcana.value, Suit: "Arcana", Name: arcana.name}
+		cardID := arcana.abbrev
+		ansiData := db.generateCardANSI(card)
+		cardData[cardID] = ansiData
 	}
 
 	// Add face-down card
@@ -618,11 +613,11 @@ func (c Card) String() string {
 	}
 }
 
-// NewDeck creates a new 76-card Sabacc deck
+// NewDeck creates a new 76-card Sabacc deck (1989 West End Games Classic Rules)
 func NewDeck() Deck {
 	var cards []Card
 
-	// Add numbered cards (1-15) for each suit (positive values)
+	// Add numbered cards (1-15) for each suit (positive values) = 60 cards
 	suits := []string{SuitSabers, SuitFlasks, SuitCoins, SuitStaves}
 	for _, suit := range suits {
 		for value := 1; value <= 15; value++ {
@@ -630,12 +625,12 @@ func NewDeck() Deck {
 		}
 	}
 
-	// Add two copies of each Arcana card
+	// Add one copy of each Arcana card (16 cards) - 1989 Classic Rules
 	for _, arcana := range ArcanaCards {
 		cards = append(cards, arcana)
-		cards = append(cards, arcana) // Second copy
 	}
 
+	// Total: 60 + 16 = 76 cards (authentic 1989 West End Games deck)
 	return Deck{Cards: cards}
 }
 
