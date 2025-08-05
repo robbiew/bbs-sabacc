@@ -165,7 +165,7 @@ This guide will help you install and configure BBS Sabacc on your BBS system.
 "-path" is the only required parameter. Only Door32.sys is supported.
 
 ```bash
-./sabacc -path /path/to/drop dir/
+./sabacc -path /path/to/drop_file_dir/
 ```
 
 ### Talisman BBS
@@ -334,4 +334,5 @@ The following features are planned for future versions:
 - Multiple AI difficulty levels
 - Custom ANSI art integration
 - Multiplayer lobby!
+
 
