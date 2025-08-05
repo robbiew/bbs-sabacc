@@ -15,6 +15,24 @@
                  [█] Player Statistics & Rankings (TODO) [█]
 ```
 
+## ⚠️ DEVELOPMENT STATUS ⚠️
+
+**🚧 This game is currently under active development! 🚧**
+
+While the core Sabacc gameplay mechanics are implemented and functional, there is still significant work to be done on:
+
+- **User Interface & Experience**: Screen layouts, ANSI art integration, menu systems
+- **Gameplay Features**: Tournament mode, save/resume functionality, enhanced AI strategies  
+- **Player Statistics**: Persistent stat tracking, leaderboards, achievement system
+- **Configuration**: Advanced game settings, difficulty levels, economy balancing
+- **Polish & Testing**: Bug fixes, performance optimization, extensive BBS testing
+
+**Current Status**: *Under Development* - Playable but expect ugliness, ongoing changes and improvements!
+
+Feedback, bug reports, and contributions are welcome as we work toward a polished 1.0 release.
+
+---
+
 # Overview
 
 **"Never tell me the odds!"** - Step into the smoky cantinas of the Outer Rim and experience the most notorious card game in the galaxy! 
@@ -37,8 +55,10 @@ But beware the **Sabacc Shift**! At any moment, the mystical interferometer fiel
 - **Authentic hand rankings** where Idiot's Array beats Pure Sabacc
 
 ### **Immersive BBS Experience**
-- **ANSI art** fo classic BBS aesthetics
-- **Persistent game state** with screen layouts and live updates
+- **ANSI color terminal** support with classic BBS aesthetics
+- **CP437 character set** for authentic retro terminal compatibility
+- **Persistent game state** with proper screen layouts and live updates
+- **Custom ANSI art** support for title screens and game backgrounds
 
 ### **Intelligent AI Opponents**
 Meet your fellow cantina patrons - each with their own personality and playing style:
@@ -50,11 +70,23 @@ Meet your fellow cantina patrons - each with their own personality and playing s
 
 Each AI analyzes visible cards, manages their Static Field strategically, and adapts their betting based on hand strength and opponent behavior - just like seasoned cantina gamblers!
 
+### **Strategic Gameplay**
+- **Dynamic betting system** with check, call, raise, and fold options every round
+- **Static Field management** - protect your best cards from Sabacc Shifts
+- **Hand calling** - end the game early when you're confident in your hand
+- **Multiple victory conditions** - Pure Sabacc, Idiot's Array, or simply the best hand
+- **Risk vs. reward** - drawing cards can improve your hand or cause you to bomb out
+
 ### **Classic BBS Integration**
 - **Door32.sys support** for seamless BBS integration
+- **Multi-BBS compatibility** (Talisman, Mystic, Synchronet, ENiGMA½, WWIV)
 - **Configurable game settings** for different BBS economies
 - **Player statistics tracking** (coming soon)
+- **No external dependencies** - pure Go implementation
 
+## 🍻 Enter the Cantina 🍻
+
+Whether you're a seasoned smuggler looking to win your next ship or a rookie pilot trying to make some quick credits, BBS Sabacc delivers the authentic Star Wars gambling experience. Feel the tension as the dice roll for a Sabacc Shift, celebrate when you hit Pure Sabacc, and learn to read your opponents' tells as you battle for galactic supremacy.
 
 *"In my experience, there's no such thing as luck."* - Obi-Wan Kenobi
 
