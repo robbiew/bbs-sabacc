@@ -43,7 +43,7 @@ This guide will help you install and configure BBS Sabacc on your BBS system.
    # Verify creation with:
    go run cmd/build-cards/main.go test
    
-   # Optional: Generate ANSI preview
+   # Optional: Generate ANSI preview of card design
    go run cmd/build-cards/main.go preview
    ```
 
@@ -410,4 +410,5 @@ Set appropriate idle timeouts:
 ```
 
 This completes the installation guide. Your BBS should now be ready to offer Classic Sabacc to your users!
+
 
