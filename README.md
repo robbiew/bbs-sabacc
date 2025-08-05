@@ -136,16 +136,36 @@ Add to your `xtrn.ini` file:
 Name=Sabacc Card Game
 Command Line=/path/to/doors/sabacc -path %g
 Multiple Concurrent Users=No
-Intercept Standard I/O=No
-Native (32-bit) Executable=No
+Intercept Standard I/O=Yes
+Native (32-bit) Executable=Yes
 Use Shell to Execute=No
 Modify User Data=No
-Execute on Event=Logon
 BBS Drop File Type=Door32.sys
 Place Drop File In=Node Directory
 Time Options=Deduct from Time Online
 Access Requirements=
 ```
+
+Alternatively, you can configure it through SCFG (Synchronet Configuration):
+1. Run `scfg` as sysop
+2. Go to **External Programs** → **Doors (Externals)**
+3. Add new door with these settings:
+   - **Name**: Sabacc Card Game
+   - **Internal Code**: SABACC
+   - **Command Line**: `/path/to/doors/sabacc -path %g`
+   - **Clean-up Command Line**: (leave blank)
+   - **Execution Cost**: 0
+   - **Access Requirements**: (set as needed)
+   - **Execution Requirements**: (leave blank)
+   - **Multiple Concurrent Users**: Yes
+   - **Intercept Standard I/O**: Yes
+   - **Native (32-bit) Executable**: Yes
+   - **Use Shell to Execute**: No
+   - **Modify User Data**: No
+   - **Execute on Event**: (leave blank)
+   - **BBS Drop File Type**: Door32.sys
+   - **Place Drop File In**: Node Directory
+   - **Time Options**: Deduct from Time Online
 
 ### ENiGMA½ BBS
 
@@ -189,34 +209,29 @@ Organize your installation as follows:
 /path/to/doors/sabacc/
 ├── sabacc              # Main executable
 ├── sabacc_cards.bin    # Card database (REQUIRED)
-├── ansi/               # ANSI art files (optional)
-│   ├── title.ans
-│   ├── menu.ans
-│   └── game.ans
-├── stats/              # Player statistics (auto-created)
-└── sabacc.conf         # Configuration file (auto-created)
+└── ansi/               # ANSI art files (optional)
+    ├── title.ans
+    ├── menu.ans
+    └── game.ans
 ```
 
-## Configuration Files
+**Note**: While the code supports `stats/` directory for player statistics and `sabacc.conf` for configuration, these features are not currently active in the main game logic.
 
-### Game Configuration (sabacc.conf)
+## Configuration
 
-The game creates a configuration file automatically with these default settings:
+### Game Settings (Currently Hardcoded)
 
-```json
-{
-  "min_ante": 10,
-  "max_ante": 100,
-  "max_bet": 500,
-  "starting_credits": 1000,
-  "shift_probability": 36,
-  "min_rounds_to_call": 2,
-  "idle_timeout_seconds": 300,
-  "enable_sound": true,
-  "enable_statistics": true,
-  "ai_personality": "balanced"
-}
+The game currently uses these fixed settings:
+
 ```
+Ante Amount: 10 credits (both pots)
+Starting Credits: 1000 credits
+Minimum Rounds to Call: 2 rounds
+Idle Timeout: 5 minutes (300 seconds)
+Shift Probability: Doubles on 2d6 (standard Sabacc rules)
+```
+
+**Note**: While a complete configuration system exists in `config.go` (including `LoadConfig()`, `SaveConfig()`, and JSON structure definitions), it is not currently integrated into the main game logic in `main.go`. The game uses hardcoded values instead of reading from `sabacc.conf`. This appears to be incomplete development work.
 
 ### ANSI Art (Optional)
 
@@ -376,39 +391,23 @@ tar -czf sabacc-stats-backup.tar.gz stats/
 rm stats/player_name.json
 ```
 
-## Advanced Configuration
+## Future Enhancements
 
-### Custom AI Personalities
+The following features are planned for future versions:
 
-Edit `sabacc.conf` to adjust AI behavior:
+### Configuration File Support
+- Adjustable ante amounts and credit limits
+- Configurable timeout settings  
+- Custom AI personality settings
+- Sound and statistics toggles
 
-- **"conservative"** - Cautious, folds early, uses static field often
-- **"balanced"** - Default reasonable behavior
-- **"aggressive"** - Risk-taking, draws more cards, folds less
+### Enhanced Features
+- Player statistics tracking and persistence
+- Tournament mode support
+- Multiple AI difficulty levels
+- Custom ANSI art integration
+- Save/resume game functionality
 
-### Credit Economy
-
-Adjust starting credits and limits to match your BBS economy:
-
-```json
-{
-  "starting_credits": 500,    # Lower for tighter economy
-  "min_ante": 5,             # Minimum bet
-  "max_ante": 50,            # Maximum bet
-  "max_bet": 200             # Betting limit
-}
-```
-
-### Time Limits
-
-Set appropriate idle timeouts:
-
-```json
-{
-  "idle_timeout_seconds": 300  # 5 minutes default
-}
-```
+To modify current game parameters, you'll need to edit the source code and recompile.
 
 This completes the installation guide. Your BBS should now be ready to offer Classic Sabacc to your users!
-
-
