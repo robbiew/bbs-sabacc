@@ -11,8 +11,57 @@
                  [█] Authentic 1989 West End Games Rules [█]
                  [█] ANSI Color Terminal Support         [█] 
                  [█] Linux-based BBS Compatibility       [█]
+                 [█] 4 AI Players and 1 Human Player     [█]
                  [█] Player Statistics & Rankings (TODO) [█]
 ```
+
+# Overview
+
+**"Never tell me the odds!"** - Step into the smoky cantinas of the Outer Rim and experience the most notorious card game in the galaxy! 
+
+Sabacc is the legendary gambling game that Han Solo played to win the *Millennium Falcon* from Lando Calrissian in the Cloud City. This authentic implementation brings the 1989 West End Games Classic Sabacc rules to your BBS, complete with all the excitement, strategy, and unpredictable Sabacc Shifts that make this game a galactic favorite.
+
+## ⭐ What is Sabacc? ⭐
+
+In the Star Wars universe, Sabacc is a high-stakes card game played in cantinas, gambling halls, and starship lounges across the galaxy. Players risk their credits (and sometimes their ships!) trying to achieve the perfect hand of exactly **23 points** - known as "Pure Sabacc" - while avoiding the dreaded "bomb out" that could cost them everything.
+
+But beware the **Sabacc Shift**! At any moment, the mystical interferometer field can scramble all cards not protected in the Static Field, turning victory into defeat in the roll of the dice. Only the most cunning players survive long enough to master this game of skill, luck, and nerves.
+
+## 🎮 Key Features 🎮
+
+### **Authentic 1989 Classic Rules**
+- **76-card deck** with four suits (Sabers, Flasks, Coins, Staves) plus 16 Arcana cards
+- **4-phase turn structure**: Betting → Shift Roll → Call → Draw
+- **Two pot system**: Hand Pot (best hand ≤23) and Sabacc Pot (Pure Sabacc/Idiot's Array)
+- **Static Field mechanics** to protect valuable cards from Sabacc Shifts
+- **Authentic hand rankings** where Idiot's Array beats Pure Sabacc
+
+### **Immersive BBS Experience**
+- **ANSI art** fo classic BBS aesthetics
+- **Persistent game state** with screen layouts and live updates
+
+### **Intelligent AI Opponents**
+Meet your fellow cantina patrons - each with their own personality and playing style:
+
+- **🛸 Phoo_ja** - *Rodian smuggler* with aggressive betting tactics
+- **⚡ Rsh-Taac** - *Twi'lek trader* who plays conservatively and uses the Static Field wisely  
+- **🎯 Soladi** - *Human bounty hunter* with calculated risk-taking strategies
+- **🌟 Ky'Ola** - *Corellian pilot* known for unpredictable bluffs and bold moves
+
+Each AI analyzes visible cards, manages their Static Field strategically, and adapts their betting based on hand strength and opponent behavior - just like seasoned cantina gamblers!
+
+### **Classic BBS Integration**
+- **Door32.sys support** for seamless BBS integration
+- **Configurable game settings** for different BBS economies
+- **Player statistics tracking** (coming soon)
+
+
+*"In my experience, there's no such thing as luck."* - Obi-Wan Kenobi
+
+**May the Force be with you... you're going to need it!**
+
+---
+
 
 # BBS Sabacc Installation Guide
 
