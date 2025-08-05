@@ -1,3 +1,19 @@
+```
+ ██████╗ ██████╗ ███████╗    ███████╗ █████╗ ██████╗  █████╗  ██████╗ ██████╗
+ ██╔══██╗██╔══██╗██╔════╝    ██╔════╝██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔════╝
+ ██████╔╝██████╔╝███████╗    ███████╗███████║██████╔╝███████║██║     ██║     
+ ██╔══██╗██╔══██╗╚════██║    ╚════██║██╔══██║██╔══██╗██╔══██║██║     ██║     
+ ██████╔╝██████╔╝███████║    ███████║██║  ██║██████╔╝██║  ██║╚██████╗╚██████╗
+ ╚═════╝ ╚═════╝ ╚══════╝    ╚══════╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═════╝
+                                                                              
+    ♠ ♦ ♣ ♥    Classic 77-Card Sabacc for Bulletin Board Systems    ♠ ♦ ♣ ♥   
+                                                                              
+           [█] Authentic 1989 West End Games Rules  [█]
+           [█] ANSI Color Terminal Support          [█] 
+           [█] Linux-based BBS Compatibility        [█]
+           [█] Player Statistics & Rankings (TODO)  [█]
+```
+
 # BBS Sabacc Installation Guide
 
 This guide will help you install and configure BBS Sabacc on your BBS system.
@@ -18,7 +34,20 @@ This guide will help you install and configure BBS Sabacc on your BBS system.
    ```bash
    cd bbs-sabacc
    ```
-3. **Build the game:**
+3. **Build the card database:**
+   ```bash
+   # Generate the card database (required first step)
+   go run cmd/build-cards/main.go
+   
+   # This creates sabacc_cards.bin containing the 77-card Sabacc deck
+   # Verify creation with:
+   go run cmd/build-cards/main.go test
+   
+   # Optional: Generate ANSI preview
+   go run cmd/build-cards/main.go preview
+   ```
+
+4. **Build the game:**
    ```bash
    # Quick build
    go build -o sabacc .
@@ -30,10 +59,15 @@ This guide will help you install and configure BBS Sabacc on your BBS system.
    chmod +x build.sh
    ./build.sh
    ```
-4. **Copy to your BBS doors directory:**
+
+5. **Copy to your BBS doors directory:**
    ```bash
+   # Copy the game executable
    cp sabacc /path/to/your/bbs/doors/
    chmod +x /path/to/your/bbs/doors/sabacc
+   
+   # Copy the card database (REQUIRED)
+   cp sabacc_cards.bin /path/to/your/bbs/doors/
    ```
 
 ### Method 2: Pre-built Binary (if available)
@@ -154,6 +188,7 @@ Organize your installation as follows:
 ```
 /path/to/doors/sabacc/
 ├── sabacc              # Main executable
+├── sabacc_cards.bin    # Card database (REQUIRED)
 ├── ansi/               # ANSI art files (optional)
 │   ├── title.ans
 │   ├── menu.ans
@@ -238,6 +273,17 @@ After installation, verify everything works:
 - Check system logs for error messages
 - Verify Go runtime compatibility
 - Test with a manual drop file first
+
+**"Card database not found" error:**
+- Ensure `sabacc_cards.bin` is in the same directory as the executable
+- Regenerate the database: `go run cmd/build-cards/main.go`
+- Verify database integrity: `go run cmd/build-cards/main.go test`
+- Check file permissions on `sabacc_cards.bin`
+
+**"Invalid card database format" error:**
+- The database may be corrupted or from an older version
+- Regenerate with: `go run cmd/build-cards/main.go`
+- Ensure you're using the correct version of the build tool
 
 ### Debug Steps
 
