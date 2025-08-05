@@ -17,7 +17,6 @@ type GameConfig struct {
 	ShiftProbability int    `json:"shift_probability"` // 1 in X chance
 	MinRoundsToCall  int    `json:"min_rounds_to_call"`
 	IdleTimeout      int    `json:"idle_timeout_seconds"`
-	EnableSound      bool   `json:"enable_sound"`
 	EnableStatistics bool   `json:"enable_statistics"`
 	AIPersonality    string `json:"ai_personality"` // "conservative", "aggressive", "balanced"
 }
@@ -47,7 +46,6 @@ func DefaultConfig() GameConfig {
 		ShiftProbability: 6, // 1 in 6 chance
 		MinRoundsToCall:  2,
 		IdleTimeout:      300, // 5 minutes
-		EnableSound:      true,
 		EnableStatistics: true,
 		AIPersonality:    "balanced",
 	}
@@ -60,8 +58,14 @@ func LoadConfig() GameConfig {
 
 	data, err := os.ReadFile(configFile)
 	if err != nil {
-		// File doesn't exist or can't be read - just use defaults
-		fmt.Printf("Config file not found, using defaults\n")
+		// File doesn't exist or can't be read - create default config file
+		fmt.Printf("Config file not found, creating default %s\n", configFile)
+		err = SaveConfig(config)
+		if err != nil {
+			fmt.Printf("Warning: Could not create config file: %v\n", err)
+		} else {
+			fmt.Printf("Created default configuration file: %s\n", configFile)
+		}
 		return config
 	}
 
@@ -174,9 +178,9 @@ func getCurrentTimestamp() int64 {
 
 // DisplayStats shows formatted statistics
 func DisplayStats(stats PlayerStats) {
-	fmt.Printf("═══════════════════════════════════════════\n")
+	fmt.Printf("%s\n", strings.Repeat("\xcd", 43))
 	fmt.Printf("            PLAYER STATISTICS\n")
-	fmt.Printf("═══════════════════════════════════════════\n\n")
+	fmt.Printf("%s\n\n", strings.Repeat("\xcd", 43))
 
 	fmt.Printf("Player: %s\n\n", stats.PlayerName)
 	fmt.Printf("Games Played: %d\n", stats.GamesPlayed)
@@ -255,7 +259,6 @@ func showConfigMenu() {
 	// Implementation would allow players to adjust:
 	// - Starting credits
 	// - AI difficulty/personality
-	// - Sound on/off
 	// - Statistics tracking on/off
 	// - Ante limits
 	fmt.Println("Configuration menu not yet implemented")

@@ -209,37 +209,51 @@ Organize your installation as follows:
 /path/to/doors/sabacc/
 ├── sabacc              # Main executable
 ├── sabacc_cards.bin    # Card database (REQUIRED)
+├── sabacc.conf         # Configuration file (auto-created)
+├── stats/              # Player statistics (auto-created)
 └── ansi/               # ANSI art files (optional)
     ├── title.ans
-    ├── menu.ans
-    └── game.ans
+    └── menu.ans
 ```
-
-**Note**: While the code supports `stats/` directory for player statistics and `sabacc.conf` for configuration, these features are not currently active in the main game logic.
 
 ## Configuration
 
-### Game Settings (Currently Hardcoded)
+### Game Settings (sabacc.conf)
 
-The game currently uses these fixed settings:
+The game automatically creates a `sabacc.conf` file on first run with these default settings:
 
+```json
+{
+  "min_ante": 10,
+  "max_ante": 100,
+  "max_bet": 500,
+  "starting_credits": 1000,
+  "shift_probability": 6,
+  "min_rounds_to_call": 2,
+  "idle_timeout_seconds": 300,
+  "enable_statistics": true,
+  "ai_personality": "balanced"
+}
 ```
-Ante Amount: 10 credits (both pots)
-Starting Credits: 1000 credits
-Minimum Rounds to Call: 2 rounds
-Idle Timeout: 5 minutes (300 seconds)
-Shift Probability: Doubles on 2d6 (standard Sabacc rules)
-```
 
-**Note**: While a complete configuration system exists in `config.go` (including `LoadConfig()`, `SaveConfig()`, and JSON structure definitions), it is not currently integrated into the main game logic in `main.go`. The game uses hardcoded values instead of reading from `sabacc.conf`. This appears to be incomplete development work.
+You can edit this file to customize the game behavior:
+
+- **min_ante**: Minimum ante required (both pots)
+- **max_ante**: Maximum ante allowed  
+- **max_bet**: Maximum betting limit
+- **starting_credits**: Credits each player starts with
+- **shift_probability**: Dice roll probability (1 in X chance)
+- **min_rounds_to_call**: Minimum rounds before calling allowed
+- **idle_timeout_seconds**: Player idle timeout in seconds
+- **enable_statistics**: Track player statistics
+- **ai_personality**: AI behavior ("conservative", "balanced", "aggressive")
 
 ### ANSI Art (Optional)
 
 Place custom ANSI art files in the `ansi/` directory:
 
 - **title.ans** - Title screen (displayed on startup)
-- **menu.ans** - Menu background  
-- **game.ans** - Game screen background
+- **menu.ans** - Menu header  
 
 Files should use standard ANSI escape sequences. The game includes built-in ASCII art if these files are missing.
 
@@ -399,7 +413,6 @@ The following features are planned for future versions:
 - Adjustable ante amounts and credit limits
 - Configurable timeout settings  
 - Custom AI personality settings
-- Sound and statistics toggles
 
 ### Enhanced Features
 - Player statistics tracking and persistence

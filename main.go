@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/eiannone/keyboard"
-	gd "github.com/robbiew/godoors"
 )
 
 var (
 	DropPath string
 	game     *SabaccGame
+	config   GameConfig
 
 	//go:embed ansi/title.ans
 	TitleScreen string
@@ -24,7 +24,7 @@ var (
 
 // SabaccGame represents the main game state
 type SabaccGame struct {
-	User          gd.User
+	User          User
 	CardRenderer  *CardRenderer
 	Deck          Deck
 	Players       []Player
@@ -54,7 +54,9 @@ type Player struct {
 }
 
 func init() {
-	gd.Idle = 300 // 5 minute idle timeout
+	// Load configuration
+	config = LoadConfig()
+	Idle = config.IdleTimeout // Set timeout from config
 }
 
 func main() {
@@ -70,7 +72,7 @@ func main() {
 	DropPath = *pathPtr
 
 	// Get door32.sys, h, w as user object
-	u := gd.Initialize(DropPath)
+	u := Initialize(DropPath)
 
 	// Exit if no ANSI capabilities
 	if u.Emulation != 1 {
@@ -103,7 +105,7 @@ func main() {
 		Round:        0,
 		Turn:         0,
 		Dealer:       0,
-		MinRounds:    1,                         // Classic rules: minimum 1-4 rounds
+		MinRounds:    config.MinRoundsToCall,    // From configuration
 		Layout:       NewScreenLayout(u.W, u.H), // Initialize persistent UI
 	}
 
@@ -115,8 +117,8 @@ func main() {
 }
 
 func showTitleScreen() {
-	gd.ClearScreen()
-	gd.MoveCursor(0, 0)
+	ClearScreen()
+	MoveCursor(0, 0)
 
 	// Try to display the ANSI title screen first
 	if _, err := os.Stat("ansi/title.ans"); err == nil {
@@ -135,28 +137,28 @@ func showTitleScreen() {
 		} else {
 			// Simple fallback if no embedded title
 			centerY := game.User.H / 2
-			gd.MoveCursor(1, centerY-6)
+			MoveCursor(1, centerY-6)
 			displayAsciiArt("sabacc")
 
-			gd.MoveCursor(1, centerY+2)
-			fmt.Print(gd.Cyan + "Classic 76-Card Sabacc for BBS" + gd.Reset)
+			MoveCursor(1, centerY+2)
+			fmt.Print(Cyan + "Classic 76-Card Sabacc for BBS" + Reset)
 		}
 	}
 
 	// Add welcome message and continue prompt at bottom
-	gd.MoveCursor(1, game.User.H-4)
-	fmt.Print(gd.White + "Welcome, " + gd.CyanHi + game.User.Alias + gd.Reset)
+	MoveCursor(1, game.User.H-4)
+	fmt.Print(White + "Welcome, " + CyanHi + game.User.Alias + Reset)
 
-	gd.MoveCursor(1, game.User.H-2)
-	fmt.Print(gd.Yellow + "Press any key to continue..." + gd.Reset)
+	MoveCursor(1, game.User.H-2)
+	fmt.Print(Yellow + "Press any key to continue..." + Reset)
 
 	waitForKey()
 }
 
 func mainMenu() {
 	for {
-		gd.ClearScreen()
-		gd.MoveCursor(0, 0)
+		ClearScreen()
+		MoveCursor(0, 0)
 
 		// Try to display the ANSI menu screen first
 		if _, err := os.Stat("ansi/menu.ans"); err == nil {
@@ -184,16 +186,16 @@ func mainMenu() {
 		}
 
 		// Position cursor for menu options (after ANSI art)
-		gd.MoveCursor(1, 4)
-		fmt.Print(gd.Yellow + "[" + gd.YellowHi + "N" + gd.Yellow + "] " + gd.White + "New Game\n" + gd.Reset)
-		fmt.Print(gd.Yellow + "[" + gd.YellowHi + "R" + gd.Yellow + "] " + gd.White + "Rules\n" + gd.Reset)
-		fmt.Print(gd.Yellow + "[" + gd.YellowHi + "S" + gd.Yellow + "] " + gd.White + "Statistics\n" + gd.Reset)
-		fmt.Print(gd.Yellow + "[" + gd.YellowHi + "Q" + gd.Yellow + "] " + gd.White + "Quit to BBS\n\n" + gd.Reset)
+		MoveCursor(1, 4)
+		fmt.Print(Yellow + "[" + YellowHi + "N" + Yellow + "] " + White + "New Game\n" + Reset)
+		fmt.Print(Yellow + "[" + YellowHi + "R" + Yellow + "] " + White + "Rules\n" + Reset)
+		fmt.Print(Yellow + "[" + YellowHi + "S" + Yellow + "] " + White + "Statistics\n" + Reset)
+		fmt.Print(Yellow + "[" + YellowHi + "Q" + Yellow + "] " + White + "Quit to BBS\n\n" + Reset)
 
-		fmt.Print(gd.Cyan + "Credits: " + gd.CyanHi + "1000" + gd.Reset + "  ")
-		fmt.Print(gd.Cyan + "Time Left: " + gd.CyanHi + strconv.Itoa(game.User.TimeLeft) + "m" + gd.Reset + "\n\n")
+		fmt.Print(Cyan + "Credits: " + CyanHi + "1000" + Reset + "  ")
+		fmt.Print(Cyan + "Time Left: " + CyanHi + strconv.Itoa(game.User.TimeLeft) + "m" + Reset + "\n\n")
 
-		fmt.Print(gd.Green + "Choice: " + gd.Reset)
+		fmt.Print(Green + "Choice: " + Reset)
 
 		char, key, err := getKeyWithTimeout()
 		if err != nil {
@@ -215,9 +217,9 @@ func mainMenu() {
 
 // Helper function for simple fallback menu
 func displaySimpleMenu() {
-	fmt.Print(gd.CyanHi + "-------------------------------------------\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "              SABACC CANTINA\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "-------------------------------------------\n\n" + gd.Reset)
+	fmt.Print(CyanHi + "-------------------------------------------\n" + Reset)
+	fmt.Print(CyanHi + "              SABACC CANTINA\n" + Reset)
+	fmt.Print(CyanHi + "-------------------------------------------\n\n" + Reset)
 }
 
 func startNewGame() {
@@ -239,15 +241,15 @@ func startNewGame() {
 
 	// Setup players: 1 human + 4 AI players to match UI layout
 	game.Players = []Player{
-		{Name: game.User.Alias, Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false}, // Human player
-		{Name: "Phoo_ja", Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},       // AI 1 (top-left)
-		{Name: "Rsh-Taac", Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},      // AI 2 (top-right)
-		{Name: "Soladi", Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},        // AI 3 (bottom-left)
-		{Name: "Ky'Ola", Credits: 1000, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},        // AI 4 (bottom-right)
+		{Name: game.User.Alias, Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false}, // Human player
+		{Name: "Phoo_ja", Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},       // AI 1 (top-left)
+		{Name: "Rsh-Taac", Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},      // AI 2 (top-right)
+		{Name: "Soladi", Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},        // AI 3 (bottom-left)
+		{Name: "Ky'Ola", Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},        // AI 4 (bottom-right)
 	}
 
 	// ANTE PHASE - Both players ante into both pots
-	anteAmount := 10
+	anteAmount := config.MinAnte
 	game.HandPot = anteAmount * 2
 	game.SabaccPot = anteAmount * 2
 
@@ -257,7 +259,7 @@ func startNewGame() {
 	}
 
 	// Show ante message in game log
-	game.Layout.LogMessage("Both players ante 10 credits to each pot", "info")
+	game.Layout.LogMessage(fmt.Sprintf("All players ante %d credits to each pot", anteAmount), "info")
 	game.Layout.DisplayMessage("Anting credits to pots...", "info", 0)
 	time.Sleep(2 * time.Second)
 
@@ -302,7 +304,7 @@ func gameLoop() {
 		if activePlayers <= 1 {
 			if lastActivePlayer >= 0 {
 				fmt.Printf("\n%s%s wins by default (others folded)!%s\n",
-					gd.GreenHi, game.Players[lastActivePlayer].Name, gd.Reset)
+					GreenHi, game.Players[lastActivePlayer].Name, Reset)
 				game.Players[lastActivePlayer].Credits += game.HandPot
 
 				// Check if they also get Sabacc pot (if they have special hand)
@@ -310,13 +312,13 @@ func gameLoop() {
 					total := calculateHandTotal(game.Players[lastActivePlayer].Hand)
 					if total == 23 {
 						fmt.Printf("%s%s also wins the Sabacc Pot! (Pure Sabacc)%s\n",
-							gd.GreenHi, game.Players[lastActivePlayer].Name, gd.Reset)
+							GreenHi, game.Players[lastActivePlayer].Name, Reset)
 						game.Players[lastActivePlayer].Credits += game.SabaccPot
 						game.SabaccPot = 0
 						displayAsciiArt("sabacc")
 					} else if isIdiotsArray(game.Players[lastActivePlayer].Hand) {
 						fmt.Printf("%s%s also wins the Sabacc Pot! (Idiot's Array)%s\n",
-							gd.GreenHi, game.Players[lastActivePlayer].Name, gd.Reset)
+							GreenHi, game.Players[lastActivePlayer].Name, Reset)
 						game.Players[lastActivePlayer].Credits += game.SabaccPot
 						game.SabaccPot = 0
 						displayAsciiArt("sabacc")
@@ -371,9 +373,148 @@ func gameLoop() {
 	waitForKey()
 }
 
-// Updated handlePlayerTurn function using persistent UI
+// Updated handlePlayerTurn function using Classic Sabacc 4-phase turn structure
 func handlePlayerTurn() {
-	// Show the player turn menu using our new UI system
+	// PHASE 1: BETTING PHASE
+	if !handlePlayerBetting() {
+		return // Player folded during betting
+	}
+
+	// PHASE 2: ROLL FOR SHIFT
+	rollForShift()
+	if game.ShiftOccurred {
+		return // Turn ends after shift
+	}
+
+	// PHASE 3: CALL PHASE (only if round 2+)
+	if game.Round >= game.MinRounds {
+		if handlePlayerCall() {
+			return // Hand was called
+		}
+	}
+
+	// PHASE 4: DRAW PHASE
+	handlePlayerDraw()
+}
+
+// PHASE 1: Betting Phase (Classic Sabacc)
+func handlePlayerBetting() bool {
+	game.Layout.DisplayMessage("BETTING PHASE", "info", 0)
+	time.Sleep(1 * time.Second)
+
+	game.Layout.LogMessage("Betting options:", "info")
+	fmt.Print(Yellow + "[" + YellowHi + "C" + Yellow + "] " + White + "Check/Call current bet\n" + Reset)
+	fmt.Print(Yellow + "[" + YellowHi + "R" + Yellow + "] " + White + "Raise bet\n" + Reset)
+	fmt.Print(Yellow + "[" + YellowHi + "F" + Yellow + "] " + White + "Fold (1 credit penalty)\n\n" + Reset)
+
+	if game.CurrentBet > 0 {
+		fmt.Printf("%sCurrent bet: %s%d%s credits\n", Yellow, YellowHi, game.CurrentBet, Reset)
+	}
+	fmt.Print(Green + "Betting choice: " + Reset)
+
+	char, _, err := getKeyWithTimeout()
+	if err != nil {
+		return true
+	}
+
+	playerRef := &game.Players[0]
+
+	switch char {
+	case 'c', 'C':
+		// Check or call current bet
+		if game.CurrentBet > 0 {
+			betAmount := game.CurrentBet
+			if playerRef.Credits >= betAmount {
+				playerRef.Credits -= betAmount
+				game.HandPot += betAmount
+				game.Layout.LogMessage(fmt.Sprintf("You call %d credits", betAmount), "action")
+				game.Layout.DisplayMessage(fmt.Sprintf("You call %d credits", betAmount), "success", 0)
+			} else {
+				game.Layout.DisplayMessage("Not enough credits to call!", "error", 0)
+				return false
+			}
+		} else {
+			game.Layout.LogMessage("You check (no bet)", "action")
+			game.Layout.DisplayMessage("You check", "info", 0)
+		}
+		time.Sleep(1 * time.Second)
+
+	case 'r', 'R':
+		// Raise bet
+		raiseAmount := 10 // Standard raise amount, could be configurable
+		totalBet := game.CurrentBet + raiseAmount
+
+		if playerRef.Credits >= totalBet {
+			playerRef.Credits -= totalBet
+			game.HandPot += totalBet
+			game.CurrentBet = totalBet // Set new bet amount for other players
+			game.Layout.LogMessage(fmt.Sprintf("You raise to %d credits", totalBet), "action")
+			game.Layout.DisplayMessage(fmt.Sprintf("You raise to %d credits", totalBet), "success", 0)
+		} else {
+			game.Layout.DisplayMessage("Not enough credits to raise!", "error", 0)
+			return false
+		}
+		time.Sleep(1 * time.Second)
+
+	case 'f', 'F':
+		// Fold
+		playerRef.Folded = true
+		playerRef.Credits -= 1 // Fold penalty goes to Sabacc Pot
+		game.SabaccPot += 1
+		game.Layout.LogMessage("You folded (-1 credit penalty)", "important")
+		game.Layout.DisplayMessage("You folded", "warning", 0)
+		time.Sleep(2 * time.Second)
+		return false // Player folded, end turn
+
+	default:
+		game.Layout.DisplayMessage("Invalid choice!", "error", 0)
+		time.Sleep(1 * time.Second)
+		return true // Try again
+	}
+
+	return true // Continue to next phase
+}
+
+// PHASE 3: Call Phase (Classic Sabacc)
+func handlePlayerCall() bool {
+	game.Layout.DisplayMessage("CALL PHASE", "info", 0)
+	time.Sleep(1 * time.Second)
+
+	fmt.Print(Yellow + "[" + YellowHi + "C" + Yellow + "] " + White + "Call the hand (end game)\n" + Reset)
+	fmt.Print(Yellow + "[" + YellowHi + "N" + Yellow + "] " + White + "No call (continue)\n\n" + Reset)
+	fmt.Print(Green + "Call choice: " + Reset)
+
+	char, _, err := getKeyWithTimeout()
+	if err != nil {
+		return false
+	}
+
+	switch char {
+	case 'c', 'C':
+		game.Called = true
+		game.Layout.LogMessage("You called the hand!", "important")
+		game.Layout.DisplayMessage("You called the hand!", "success", 0)
+		time.Sleep(2 * time.Second)
+		return true // Hand was called
+
+	case 'n', 'N':
+		game.Layout.LogMessage("You choose not to call", "action")
+		game.Layout.DisplayMessage("No call", "info", 0)
+		time.Sleep(1 * time.Second)
+		return false // Continue game
+
+	default:
+		game.Layout.DisplayMessage("Invalid choice!", "error", 0)
+		time.Sleep(1 * time.Second)
+		return false
+	}
+}
+
+// PHASE 4: Draw Phase (Classic Sabacc)
+func handlePlayerDraw() {
+	game.Layout.DisplayMessage("DRAW PHASE", "info", 0)
+	time.Sleep(1 * time.Second)
+
 	game.Layout.ShowPlayerTurnMenu(game.Round)
 
 	char, _, err := getKeyWithTimeout()
@@ -403,156 +544,9 @@ func handlePlayerTurn() {
 		time.Sleep(1 * time.Second)
 	case 'f', 'F':
 		handleStaticField()
-	case 'c', 'C':
-		if game.Round >= 2 { // Can only call after round 2
-			game.Called = true
-			game.Layout.LogMessage("You called the hand!", "important")
-			game.Layout.DisplayMessage("You called the hand!", "success", 0)
-			time.Sleep(2 * time.Second)
-			return // Don't continue with dice roll when calling
-		} else {
-			game.Layout.DisplayMessage("Cannot call until round 2!", "error", 0)
-			time.Sleep(2 * time.Second)
-		}
-	case 'q', 'Q':
-		playerRef.Folded = true
-		playerRef.Credits -= 1 // Fold penalty
-		game.SabaccPot += 1
-		game.Layout.LogMessage("You folded (-1 credit penalty)", "important")
-		game.Layout.DisplayMessage("You folded.", "warning", 0)
-		time.Sleep(2 * time.Second)
-		return // Don't continue with dice roll when folding
 	default:
 		game.Layout.DisplayMessage("Invalid choice!", "error", 0)
 		time.Sleep(1 * time.Second)
-		return
-	}
-
-	// Only roll dice if player didn't fold or call
-	if !playerRef.Folded && !game.Called {
-		rollForShift()
-	}
-}
-
-func handleBettingPhase() {
-	fmt.Printf("\n%sBETTING PHASE%s\n", gd.Yellow, gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "C" + gd.Yellow + "] " + gd.White + "Check/Call\n" + gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "R" + gd.Yellow + "] " + gd.White + "Raise\n" + gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "F" + gd.Yellow + "] " + gd.White + "Fold\n\n" + gd.Reset)
-	fmt.Print(gd.Green + "Choice: " + gd.Reset)
-
-	char, _, err := getKeyWithTimeout()
-	if err != nil {
-		return
-	}
-
-	switch char {
-	case 'c', 'C':
-		// Call current bet (if any)
-		fmt.Printf("\n%sYou check/call.%s\n", gd.Green, gd.Reset)
-		time.Sleep(1 * time.Second)
-	case 'r', 'R':
-		// Raise bet
-		raiseAmount := 10 // Simple raise amount
-		game.Players[0].Credits -= raiseAmount
-		game.HandPot += raiseAmount
-		game.CurrentBet += raiseAmount
-		fmt.Printf("\n%sYou raise by %d credits.%s\n", gd.Green, raiseAmount, gd.Reset)
-		time.Sleep(1 * time.Second)
-	case 'f', 'F':
-		// Fold
-		game.Players[0].Folded = true
-		game.Players[0].Credits -= 1 // Fold penalty to Sabacc pot
-		game.SabaccPot += 1
-		fmt.Printf("\n%sYou folded.%s\n", gd.Red, gd.Reset)
-		time.Sleep(1 * time.Second)
-
-		// Check if only one player remains after folding
-		checkForGameEnd()
-	}
-}
-
-// Add this helper function to check if game should end
-func checkForGameEnd() {
-	activePlayers := 0
-	lastActivePlayer := -1
-
-	for i, player := range game.Players {
-		if !player.Folded {
-			activePlayers++
-			lastActivePlayer = i
-		}
-	}
-
-	// If only one player left, they win immediately
-	if activePlayers <= 1 {
-		if lastActivePlayer >= 0 {
-			fmt.Printf("\n%s%s wins by default (others folded)!%s\n",
-				gd.GreenHi, game.Players[lastActivePlayer].Name, gd.Reset)
-			game.Players[lastActivePlayer].Credits += game.HandPot
-
-			// Also award Sabacc pot if it exists
-			if game.SabaccPot > 0 {
-				fmt.Printf("%s%s also wins the Sabacc Pot! (+%d credits)%s\n",
-					gd.GreenHi, game.Players[lastActivePlayer].Name, game.SabaccPot, gd.Reset)
-				game.Players[lastActivePlayer].Credits += game.SabaccPot
-			}
-
-			time.Sleep(2 * time.Second)
-		}
-		game.GameOver = true
-	}
-}
-
-func handleCallPhase() {
-	// In single player vs computer, computer decides whether to call
-	if game.Turn == 0 {
-		fmt.Printf("\n%sAsking if anyone wants to call the hand...%s\n", gd.Yellow, gd.Reset)
-		time.Sleep(1 * time.Second)
-		// Computer AI decides - simplified logic
-		computerTotal := calculateHandTotal(game.Players[1].Hand)
-		if computerTotal >= 20 && computerTotal <= 23 {
-			game.Called = true
-			fmt.Printf("\n%s%s calls the hand!%s\n", gd.GreenHi, game.Players[1].Name, gd.Reset)
-			time.Sleep(1 * time.Second)
-		}
-	}
-}
-
-func handleDrawPhase() {
-	fmt.Printf("\n%sDRAW PHASE%s\n", gd.Yellow, gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "G" + gd.Yellow + "] " + gd.White + "Gain (draw card)\n" + gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "T" + gd.Yellow + "] " + gd.White + "Trade card\n" + gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "S" + gd.Yellow + "] " + gd.White + "Stand (do nothing)\n" + gd.Reset)
-	fmt.Print(gd.Yellow + "[" + gd.YellowHi + "F" + gd.Yellow + "] " + gd.White + "Static Field\n\n" + gd.Reset)
-	fmt.Print(gd.Green + "Choice: " + gd.Reset)
-
-	char, _, err := getKeyWithTimeout()
-	if err != nil {
-		return
-	}
-
-	playerRef := &game.Players[0]
-
-	switch char {
-	case 'g', 'G':
-		// Gain: Draw one card
-		if len(game.Deck.Cards) > 0 {
-			card := game.Deck.Deal()
-			playerRef.Hand = append(playerRef.Hand, card)
-			fmt.Printf("\n%sYou drew: %s[%s]%s\n", gd.Green, getCardColor(card), card.String(), gd.Reset)
-			time.Sleep(1 * time.Second)
-		}
-	case 't', 'T':
-		// Trade: Discard one card, draw one card
-		handleTradeCard()
-	case 's', 'S':
-		// Stand: Do nothing
-		fmt.Printf("\n%sYou stand.%s\n", gd.Green, gd.Reset)
-		time.Sleep(1 * time.Second)
-	case 'f', 'F':
-		// Static Field management
-		handleStaticField()
 	}
 }
 
@@ -563,82 +557,178 @@ func handleComputerTurn(canCall bool) {
 		return
 	}
 
-	time.Sleep(1 * time.Second) // Simulate thinking
-
-	// Log the AI action in the game log
 	game.Layout.LogMessage(computer.Name+" is thinking...", "info")
 	time.Sleep(1 * time.Second)
 
-	// PHASE 1: BET (simplified AI)
-	game.Layout.LogMessage(computer.Name+" checks.", "action")
-	time.Sleep(500 * time.Millisecond)
+	// PHASE 1: BETTING PHASE (Classic Sabacc AI)
+	if !handleComputerBetting(game.Turn) {
+		return // Computer folded during betting
+	}
 
-	// PHASE 2: ROLL
+	// PHASE 2: ROLL FOR SHIFT
 	rollForShift()
+	if game.ShiftOccurred {
+		return // Turn ends after shift
+	}
 
-	// PHASE 3: CALL (Enhanced with visible card awareness)
-	if canCall {
-		total := calculateHandTotal(computer.Hand)
-		staticTotal := calculateHandTotal(computer.StaticField)
-		combinedTotal := total + staticTotal
-
-		// Enhanced calling logic based on visible cards
-		shouldCall := evaluateAICallDecision(game.Turn, combinedTotal)
-
-		if shouldCall && game.Round >= 2 {
-			game.Called = true
-			game.Layout.LogMessage(computer.Name+" calls the hand!", "important")
-			time.Sleep(2 * time.Second)
-			return
+	// PHASE 3: CALL PHASE (only if round 2+)
+	if game.Round >= game.MinRounds {
+		if handleComputerCall(game.Turn) {
+			return // Hand was called
 		}
 	}
 
-	// PHASE 4: STATIC FIELD MANAGEMENT (New!)
-	if !game.Called {
-		handleAIStaticField(game.Turn)
+	// PHASE 4: DRAW PHASE
+	handleComputerDraw(game.Turn)
+}
+
+// AI PHASE 1: Computer Betting Phase
+func handleComputerBetting(playerIndex int) bool {
+	computer := &game.Players[playerIndex]
+	total := calculateHandTotal(computer.Hand) + calculateHandTotal(computer.StaticField)
+
+	// AI betting logic based on hand strength
+	if total > 23 || total < -23 || total == 0 {
+		// Bombed out - must fold
+		computer.Folded = true
+		computer.Credits -= 1
+		game.SabaccPot += 1
+		game.Layout.LogMessage(computer.Name+" folds (bombed out)", "important")
+		return false
 	}
 
-	// PHASE 5: DRAW (Enhanced AI decision logic)
-	if !game.Called {
-		total := calculateHandTotal(computer.Hand)
-		staticTotal := calculateHandTotal(computer.StaticField)
-		combinedTotal := total + staticTotal
-
-		if combinedTotal > 23 || combinedTotal < -23 {
-			// Bombed out - must fold
-			computer.Folded = true
-			computer.Credits -= 1
-			game.SabaccPot += 1
-			game.Layout.LogMessage(computer.Name+" folds (bombed out).", "important")
-		} else if combinedTotal > 20 || combinedTotal < -20 {
-			// Risky hand, might fold or try to improve
-			if combinedTotal > 23 || combinedTotal < -23 {
+	// Strong hands (20-23): Raise or call aggressively
+	if total >= 20 && total <= 23 {
+		if game.CurrentBet == 0 {
+			// Raise with strong hand
+			raiseAmount := 10
+			if computer.Credits >= raiseAmount {
+				computer.Credits -= raiseAmount
+				game.HandPot += raiseAmount
+				game.CurrentBet = raiseAmount
+				game.Layout.LogMessage(computer.Name+" raises to "+fmt.Sprintf("%d", raiseAmount)+" credits", "action")
+			} else {
+				game.Layout.LogMessage(computer.Name+" checks", "action")
+			}
+		} else {
+			// Call existing bet
+			if computer.Credits >= game.CurrentBet {
+				computer.Credits -= game.CurrentBet
+				game.HandPot += game.CurrentBet
+				game.Layout.LogMessage(computer.Name+" calls "+fmt.Sprintf("%d", game.CurrentBet)+" credits", "action")
+			} else {
+				// Can't afford to call - fold
 				computer.Folded = true
 				computer.Credits -= 1
 				game.SabaccPot += 1
-				game.Layout.LogMessage(computer.Name+" folds.", "important")
-			} else if len(computer.Hand) > 2 {
-				// Trade a card (but not from static field)
-				computer.Hand = computer.Hand[1:] // Remove first card (simplified)
-				if len(game.Deck.Cards) > 0 {
-					card := game.Deck.Deal()
-					computer.Hand = append(computer.Hand, card)
-					game.Layout.LogMessage(computer.Name+" trades a card.", "action")
-				}
-			} else {
-				game.Layout.LogMessage(computer.Name+" stands.", "action")
-			}
-		} else {
-			// Try to improve hand based on visible card intelligence
-			drawDecision := evaluateAIDrawDecision(game.Turn, combinedTotal)
-			if drawDecision && len(game.Deck.Cards) > 0 {
-				card := game.Deck.Deal()
-				computer.Hand = append(computer.Hand, card)
-				game.Layout.LogMessage(computer.Name+" draws a card.", "action")
-			} else {
-				game.Layout.LogMessage(computer.Name+" stands.", "action")
+				game.Layout.LogMessage(computer.Name+" folds (insufficient credits)", "important")
+				return false
 			}
 		}
+	} else if total >= 15 && total <= 19 {
+		// Medium hands: Call small bets, fold large ones
+		if game.CurrentBet <= 5 {
+			if computer.Credits >= game.CurrentBet {
+				computer.Credits -= game.CurrentBet
+				game.HandPot += game.CurrentBet
+				game.Layout.LogMessage(computer.Name+" calls "+fmt.Sprintf("%d", game.CurrentBet)+" credits", "action")
+			} else {
+				game.Layout.LogMessage(computer.Name+" checks", "action")
+			}
+		} else {
+			// Bet too high for medium hand - fold
+			computer.Folded = true
+			computer.Credits -= 1
+			game.SabaccPot += 1
+			game.Layout.LogMessage(computer.Name+" folds (bet too high)", "important")
+			return false
+		}
+	} else {
+		// Weak hands: Check/fold
+		if game.CurrentBet == 0 {
+			game.Layout.LogMessage(computer.Name+" checks", "action")
+		} else {
+			// Any bet with weak hand - fold
+			computer.Folded = true
+			computer.Credits -= 1
+			game.SabaccPot += 1
+			game.Layout.LogMessage(computer.Name+" folds (weak hand)", "important")
+			return false
+		}
+	}
+
+	time.Sleep(1 * time.Second)
+	return true
+}
+
+// AI PHASE 3: Computer Call Phase
+func handleComputerCall(playerIndex int) bool {
+	computer := &game.Players[playerIndex]
+	total := calculateHandTotal(computer.Hand) + calculateHandTotal(computer.StaticField)
+
+	shouldCall := evaluateAICallDecision(playerIndex, total)
+
+	if shouldCall {
+		game.Called = true
+		game.Layout.LogMessage(computer.Name+" calls the hand!", "important")
+		time.Sleep(2 * time.Second)
+		return true
+	}
+
+	game.Layout.LogMessage(computer.Name+" chooses not to call", "action")
+	time.Sleep(500 * time.Millisecond)
+	return false
+}
+
+// AI PHASE 4: Computer Draw Phase
+func handleComputerDraw(playerIndex int) {
+	computer := &game.Players[playerIndex]
+	total := calculateHandTotal(computer.Hand) + calculateHandTotal(computer.StaticField)
+
+	// First: Static field management
+	handleAIStaticField(playerIndex)
+
+	// Then: Draw decision
+	if total >= 20 && total <= 23 {
+		// Excellent hand - stand
+		game.Layout.LogMessage(computer.Name+" stands", "action")
+	} else if total >= 15 && total <= 19 {
+		// Good hand - might draw if calculated risk is worth it
+		drawDecision := evaluateAIDrawDecision(playerIndex, total)
+		if drawDecision && len(game.Deck.Cards) > 0 {
+			card := game.Deck.Deal()
+			computer.Hand = append(computer.Hand, card)
+			game.Layout.LogMessage(computer.Name+" draws a card", "action")
+		} else {
+			game.Layout.LogMessage(computer.Name+" stands", "action")
+		}
+	} else if total >= 5 && total <= 14 {
+		// Medium hand - usually draw
+		if len(game.Deck.Cards) > 0 {
+			card := game.Deck.Deal()
+			computer.Hand = append(computer.Hand, card)
+			game.Layout.LogMessage(computer.Name+" draws a card", "action")
+		} else {
+			game.Layout.LogMessage(computer.Name+" stands (no cards left)", "action")
+		}
+	} else if total < 5 && total > -15 {
+		// Poor hand - aggressive improvement needed
+		if len(computer.Hand) > 2 && len(game.Deck.Cards) > 0 {
+			// Trade worst card
+			computer.Hand = computer.Hand[1:] // Remove card (simplified)
+			card := game.Deck.Deal()
+			computer.Hand = append(computer.Hand, card)
+			game.Layout.LogMessage(computer.Name+" trades a card", "action")
+		} else if len(game.Deck.Cards) > 0 {
+			card := game.Deck.Deal()
+			computer.Hand = append(computer.Hand, card)
+			game.Layout.LogMessage(computer.Name+" draws a card", "action")
+		} else {
+			game.Layout.LogMessage(computer.Name+" stands", "action")
+		}
+	} else {
+		// Very poor hand or close to bombing - stand
+		game.Layout.LogMessage(computer.Name+" stands", "action")
 	}
 
 	time.Sleep(1 * time.Second)
@@ -727,10 +817,10 @@ func nextTurn() {
 }
 
 func resolveHand() {
-	gd.ClearScreen()
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "                HAND RESULTS\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
+	ClearScreen()
+	fmt.Print(CyanHi + "═══════════════════════════════════════════\n" + Reset)
+	fmt.Print(CyanHi + "                HAND RESULTS\n" + Reset)
+	fmt.Print(CyanHi + "═══════════════════════════════════════════\n\n" + Reset)
 
 	// Show all hands and determine winner
 	winner := -1
@@ -740,31 +830,31 @@ func resolveHand() {
 
 	for i, playerData := range game.Players {
 		if playerData.Folded {
-			fmt.Printf("%s%s: FOLDED%s\n", gd.Red, playerData.Name, gd.Reset)
+			fmt.Printf("%s%s: FOLDED%s\n", Red, playerData.Name, Reset)
 			continue
 		}
 
 		total := calculateHandTotal(playerData.Hand)
-		fmt.Printf("%s%s:%s ", gd.Cyan, playerData.Name, gd.Reset)
+		fmt.Printf("%s%s:%s ", Cyan, playerData.Name, Reset)
 		for _, card := range playerData.Hand {
-			fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), gd.Reset)
+			fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), Reset)
 		}
-		fmt.Printf("= %s%d%s", gd.YellowHi, total, gd.Reset)
+		fmt.Printf("= %s%d%s", YellowHi, total, Reset)
 
 		// Check for special hands (Sabacc Pot winners)
 		if isIdiotsArray(playerData.Hand) {
-			fmt.Printf(" %s(IDIOT'S ARRAY!)%s\n", gd.GreenHi, gd.Reset)
+			fmt.Printf(" %s(IDIOT'S ARRAY!)%s\n", GreenHi, Reset)
 			displayAsciiArt("sabacc") // Show sabacc art for special hands
 			bestScore = 1000
 			sabaccWinner = i            // Idiot's Array beats Pure Sabacc
 			time.Sleep(3 * time.Second) // Let player see the art
 		} else if total == 23 && sabaccWinner == -1 {
-			fmt.Printf(" %s(PURE SABACC!)%s\n", gd.GreenHi, gd.Reset)
+			fmt.Printf(" %s(PURE SABACC!)%s\n", GreenHi, Reset)
 			displayAsciiArt("sabacc") // Show sabacc art for Pure Sabacc
 			sabaccWinner = i
 			time.Sleep(3 * time.Second) // Let player see the art
 		} else if total > 23 || total < -23 || total == 0 {
-			fmt.Printf(" %s(BOMBED OUT!)%s\n", gd.Red, gd.Reset)
+			fmt.Printf(" %s(BOMBED OUT!)%s\n", Red, Reset)
 			displayAsciiArt("bomb") // Show bomb art for bomb outs
 			game.Players[i].BombedOut = true
 			bombedOutPlayers = append(bombedOutPlayers, i)
@@ -788,9 +878,9 @@ func resolveHand() {
 	if sabaccWinner >= 0 {
 		// Someone won with Pure Sabacc or Idiot's Array
 		fmt.Printf("%s%s wins both pots with a special hand!%s\n",
-			gd.GreenHi, game.Players[sabaccWinner].Name, gd.Reset)
+			GreenHi, game.Players[sabaccWinner].Name, Reset)
 		fmt.Printf("%s+%d credits (Hand Pot) +%d credits (Sabacc Pot)%s\n",
-			gd.GreenHi, game.HandPot, game.SabaccPot, gd.Reset)
+			GreenHi, game.HandPot, game.SabaccPot, Reset)
 
 		game.Players[sabaccWinner].Credits += game.HandPot + game.SabaccPot
 		game.SabaccPot = 0 // Reset Sabacc pot
@@ -802,17 +892,17 @@ func resolveHand() {
 	} else if winner >= 0 {
 		// Regular hand winner
 		fmt.Printf("%s%s wins the hand! (+%d credits)%s\n",
-			gd.GreenHi, game.Players[winner].Name, game.HandPot, gd.Reset)
+			GreenHi, game.Players[winner].Name, game.HandPot, Reset)
 		game.Players[winner].Credits += game.HandPot
 
 	} else {
 		// Everyone bombed out or folded
-		fmt.Printf("%sNo winner! Hand pot goes to Sabacc pot.%s\n", gd.Yellow, gd.Reset)
+		fmt.Printf("%sNo winner! Hand pot goes to Sabacc pot.%s\n", Yellow, Reset)
 		game.SabaccPot += game.HandPot
 
 		// Show bomb art for the chaos
 		if len(bombedOutPlayers) > 1 {
-			fmt.Printf("\n%sEveryone bombed out!%s\n", gd.RedHi, gd.Reset)
+			fmt.Printf("\n%sEveryone bombed out!%s\n", RedHi, Reset)
 			displayAsciiArt("bomb")
 			time.Sleep(2 * time.Second)
 		}
@@ -820,10 +910,10 @@ func resolveHand() {
 
 	// Show penalty summary if anyone bombed out
 	if len(bombedOutPlayers) > 0 {
-		fmt.Printf("\n%sBomb Out Penalties:%s\n", gd.Red, gd.Reset)
+		fmt.Printf("\n%sBomb Out Penalties:%s\n", Red, Reset)
 		for _, playerIndex := range bombedOutPlayers {
 			fmt.Printf("%s%s paid %d credits to Sabacc Pot%s\n",
-				gd.Red, game.Players[playerIndex].Name, game.HandPot, gd.Reset)
+				Red, game.Players[playerIndex].Name, game.HandPot, Reset)
 		}
 	}
 
@@ -836,7 +926,7 @@ func displayGameScreen() {
 	// Update header with current game info
 	currentPlayerName := ""
 	if game.Turn == 0 {
-		currentPlayerName = "► YOUR TURN ◄"
+		currentPlayerName = "\x10 YOUR TURN \x11" // CP437 arrows
 	} else if game.Turn < len(game.Players) {
 		currentPlayerName = game.Players[game.Turn].Name + " thinking..."
 	}
@@ -850,7 +940,7 @@ func displayGameScreen() {
 		// Update AI player info (don't show total)
 		game.Layout.UpdatePlayerInfo(i, aiPlayer.Name, aiPlayer.Credits, 0, false)
 
-		// Render AI player's cards (as CP$37 blocks)
+		// Render AI player's cards (as CP437 blocks)
 		game.Layout.RenderPlayerCards(i, aiPlayer.Hand, true, game.CardRenderer)
 	}
 
@@ -1150,10 +1240,10 @@ func isPartOfGoodCombination(card Card, allCards []Card) bool {
 
 func showGameResults() {
 	fmt.Println()
-	fmt.Printf("%sFinal Credits:%s\n", gd.CyanHi, gd.Reset)
+	fmt.Printf("%sFinal Credits:%s\n", CyanHi, Reset)
 	for _, playerData := range game.Players {
-		fmt.Printf("%s: %s%d%s credits\n", playerData.Name, gd.YellowHi, playerData.Credits, gd.Reset)
+		fmt.Printf("%s: %s%d%s credits\n", playerData.Name, YellowHi, playerData.Credits, Reset)
 	}
 	fmt.Println()
-	fmt.Print(gd.Yellow + "Press any key to return to menu..." + gd.Reset)
+	fmt.Print(Yellow + "Press any key to return to menu..." + Reset)
 }

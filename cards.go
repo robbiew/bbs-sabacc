@@ -8,8 +8,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	gd "github.com/robbiew/godoors"
 )
 
 // Card represents a Sabacc card
@@ -461,7 +459,7 @@ func (cr *CardRenderer) RenderCard(card Card) {
 		if i >= height {
 			break
 		}
-		gd.MoveCursor(startX, startY+i)
+		MoveCursor(startX, startY+i)
 		fmt.Print(line)
 	}
 }
@@ -470,7 +468,7 @@ func (cr *CardRenderer) RenderCard(card Card) {
 func (cr *CardRenderer) RenderCards(cards []Card, startX, startY int) {
 	for i, card := range cards {
 		cardX := startX + (i * (cr.Database.CardWidth + cr.CardSpacing))
-		gd.MoveCursor(cardX, startY)
+		MoveCursor(cardX, startY)
 
 		cardID := card.String()
 		data, _, height, err := cr.Database.GetCardData(cardID)
@@ -485,7 +483,7 @@ func (cr *CardRenderer) RenderCards(cards []Card, startX, startY int) {
 			if row >= height {
 				break
 			}
-			gd.MoveCursor(cardX, startY+row)
+			MoveCursor(cardX, startY+row)
 			fmt.Print(line)
 		}
 	}
@@ -505,7 +503,7 @@ func (cr *CardRenderer) RenderFaceDownCard(x, y int) {
 		if row >= height {
 			break
 		}
-		gd.MoveCursor(x, y+row)
+		MoveCursor(x, y+row)
 		fmt.Print(line)
 	}
 }
@@ -522,12 +520,12 @@ func (cr *CardRenderer) renderFallbackCard(card Card) {
 }
 
 func (cr *CardRenderer) renderFallbackCardAt(card Card, x, y int) {
-	gd.MoveCursor(x, y)
+	MoveCursor(x, y)
 	fmt.Printf("[%s]", card.String())
 }
 
 func (cr *CardRenderer) renderFallbackBack(x, y int) {
-	gd.MoveCursor(x, y)
+	MoveCursor(x, y)
 	fmt.Print("[??]")
 }
 
@@ -668,19 +666,19 @@ func calculateHandTotal(hand []Card) int {
 func getCardColor(card Card) string {
 	switch card.Suit {
 	case SuitSabers:
-		return gd.Blue
+		return Blue
 	case SuitFlasks:
-		return gd.Green
+		return Green
 	case SuitCoins:
-		return gd.Yellow
+		return Yellow
 	case SuitStaves:
-		return gd.Red
+		return Red
 	case "Arcana":
-		return gd.Magenta
+		return Magenta
 	default:
 		// Debug: print unknown suit
 		fmt.Printf("[DEBUG] Unknown suit: '%s'\n", card.Suit)
-		return gd.White
+		return White
 	}
 }
 
@@ -710,26 +708,26 @@ func handleTradeCard() {
 	player := &game.Players[0]
 
 	if len(player.Hand) < 2 {
-		fmt.Printf("\n%sYou need at least 2 cards to trade!%s\n", gd.Red, gd.Reset)
+		fmt.Printf("\n%sYou need at least 2 cards to trade!%s\n", Red, Reset)
 		time.Sleep(1 * time.Second)
 		return
 	}
 
-	gd.ClearScreen()
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "              TRADE A CARD\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
+	ClearScreen()
+	fmt.Print(CyanHi + strings.Repeat("\xcd", 43) + "\n" + Reset)
+	fmt.Print(CyanHi + "              TRADE A CARD\n" + Reset)
+	fmt.Print(CyanHi + strings.Repeat("\xcd", 43) + "\n\n" + Reset)
 
-	fmt.Printf("%sSelect a card to trade:%s\n\n", gd.Yellow, gd.Reset)
+	fmt.Printf("%sSelect a card to trade:%s\n\n", Yellow, Reset)
 
 	for i, card := range player.Hand {
 		fmt.Printf("%s[%d]%s %s[%s]%s\n",
-			gd.Green, i+1, gd.Reset,
-			getCardColor(card), card.String(), gd.Reset)
+			Green, i+1, Reset,
+			getCardColor(card), card.String(), Reset)
 	}
 
-	fmt.Printf("\n%s[0] Cancel%s\n\n", gd.Red, gd.Reset)
-	fmt.Print(gd.Green + "Choice: " + gd.Reset)
+	fmt.Printf("\n%s[0] Cancel%s\n\n", Red, Reset)
+	fmt.Print(Green + "Choice: " + Reset)
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
@@ -742,7 +740,7 @@ func handleTradeCard() {
 	}
 
 	if choice < 1 || choice > len(player.Hand) {
-		fmt.Printf("\n%sInvalid choice!%s\n", gd.Red, gd.Reset)
+		fmt.Printf("\n%sInvalid choice!%s\n", Red, Reset)
 		time.Sleep(1 * time.Second)
 		return
 	}
@@ -757,26 +755,25 @@ func handleTradeCard() {
 		player.Hand = append(player.Hand, newCard)
 
 		fmt.Printf("\n%sYou traded %s[%s]%s for %s[%s]%s\n",
-			gd.Green, getCardColor(tradedCard), tradedCard.String(), gd.Reset,
-			getCardColor(newCard), newCard.String(), gd.Reset)
+			Green, getCardColor(tradedCard), tradedCard.String(), Reset,
+			getCardColor(newCard), newCard.String(), Reset)
 	} else {
-		fmt.Printf("\n%sNo more cards in deck!%s\n", gd.Red, gd.Reset)
+		fmt.Printf("\n%sNo more cards in deck!%s\n", Red, Reset)
 	}
 
 	time.Sleep(2 * time.Second)
 }
 
 func handleStaticField() {
+	ClearScreen()
+	fmt.Print(CyanHi + strings.Repeat("\xcd", 43) + "\n" + Reset)
+	fmt.Print(CyanHi + "             STATIC FIELD\n" + Reset)
+	fmt.Print(CyanHi + strings.Repeat("\xcd", 43) + "\n\n" + Reset)
 
-	gd.ClearScreen()
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "             STATIC FIELD\n" + gd.Reset)
-	fmt.Print(gd.CyanHi + "═══════════════════════════════════════════\n\n" + gd.Reset)
-
-	fmt.Printf("%s[1]%s Place card in Static Field\n", gd.Green, gd.Reset)
-	fmt.Printf("%s[2]%s Remove card from Static Field\n", gd.Green, gd.Reset)
-	fmt.Printf("%s[0]%s Cancel\n\n", gd.Red, gd.Reset)
-	fmt.Print(gd.Green + "Choice: " + gd.Reset)
+	fmt.Printf("%s[1]%s Place card in Static Field\n", Green, Reset)
+	fmt.Printf("%s[2]%s Remove card from Static Field\n", Green, Reset)
+	fmt.Printf("%s[0]%s Cancel\n\n", Red, Reset)
+	fmt.Print(Green + "Choice: " + Reset)
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
@@ -797,21 +794,21 @@ func placeInStaticField() {
 	player := &game.Players[0]
 
 	if len(player.Hand) == 0 {
-		fmt.Printf("\n%sNo cards in hand!%s\n", gd.Red, gd.Reset)
+		fmt.Printf("\n%sNo cards in hand!%s\n", Red, Reset)
 		time.Sleep(1 * time.Second)
 		return
 	}
 
-	fmt.Printf("\n%sSelect a card to place in Static Field:%s\n\n", gd.Yellow, gd.Reset)
+	fmt.Printf("\n%sSelect a card to place in Static Field:%s\n\n", Yellow, Reset)
 
 	for i, card := range player.Hand {
 		fmt.Printf("%s[%d]%s %s[%s]%s\n",
-			gd.Green, i+1, gd.Reset,
-			getCardColor(card), card.String(), gd.Reset)
+			Green, i+1, Reset,
+			getCardColor(card), card.String(), Reset)
 	}
 
-	fmt.Printf("\n%s[0] Cancel%s\n\n", gd.Red, gd.Reset)
-	fmt.Print(gd.Green + "Choice: " + gd.Reset)
+	fmt.Printf("\n%s[0] Cancel%s\n\n", Red, Reset)
+	fmt.Print(Green + "Choice: " + Reset)
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
@@ -824,7 +821,7 @@ func placeInStaticField() {
 	}
 
 	if choice < 1 || choice > len(player.Hand) {
-		fmt.Printf("\n%sInvalid choice!%s\n", gd.Red, gd.Reset)
+		fmt.Printf("\n%sInvalid choice!%s\n", Red, Reset)
 		time.Sleep(1 * time.Second)
 		return
 	}
@@ -835,7 +832,7 @@ func placeInStaticField() {
 	player.StaticField = append(player.StaticField, card)
 
 	fmt.Printf("\n%s%s[%s]%s placed in Static Field (protected from shifts)%s\n",
-		gd.Green, getCardColor(card), card.String(), gd.Reset, gd.Reset)
+		Green, getCardColor(card), card.String(), Reset, Reset)
 	time.Sleep(2 * time.Second)
 }
 
@@ -843,21 +840,21 @@ func removeFromStaticField() {
 	player := &game.Players[0]
 
 	if len(player.StaticField) == 0 {
-		fmt.Printf("\n%sNo cards in Static Field!%s\n", gd.Red, gd.Reset)
+		fmt.Printf("\n%sNo cards in Static Field!%s\n", Red, Reset)
 		time.Sleep(1 * time.Second)
 		return
 	}
 
-	fmt.Printf("\n%sSelect a card to remove from Static Field:%s\n\n", gd.Yellow, gd.Reset)
+	fmt.Printf("\n%sSelect a card to remove from Static Field:%s\n\n", Yellow, Reset)
 
 	for i, card := range player.StaticField {
 		fmt.Printf("%s[%d]%s %s[%s]%s\n",
-			gd.Green, i+1, gd.Reset,
-			getCardColor(card), card.String(), gd.Reset)
+			Green, i+1, Reset,
+			getCardColor(card), card.String(), Reset)
 	}
 
-	fmt.Printf("\n%s[0] Cancel%s\n\n", gd.Red, gd.Reset)
-	fmt.Print(gd.Green + "Choice: " + gd.Reset)
+	fmt.Printf("\n%s[0] Cancel%s\n\n", Red, Reset)
+	fmt.Print(Green + "Choice: " + Reset)
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
@@ -870,7 +867,7 @@ func removeFromStaticField() {
 	}
 
 	if choice < 1 || choice > len(player.StaticField) {
-		fmt.Printf("\n%sInvalid choice!%s\n", gd.Red, gd.Reset)
+		fmt.Printf("\n%sInvalid choice!%s\n", Red, Reset)
 		time.Sleep(1 * time.Second)
 		return
 	}
@@ -881,6 +878,6 @@ func removeFromStaticField() {
 	player.Hand = append(player.Hand, card)
 
 	fmt.Printf("\n%s%s[%s]%s returned to hand%s\n",
-		gd.Green, getCardColor(card), card.String(), gd.Reset, gd.Reset)
+		Green, getCardColor(card), card.String(), Reset, Reset)
 	time.Sleep(2 * time.Second)
 }

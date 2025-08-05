@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	gd "github.com/robbiew/godoors"
 )
 
 // ScreenLayout manages the persistent UI layout for the Sabacc game
@@ -135,7 +133,7 @@ func NewScreenLayout(termW, termH int) *ScreenLayout {
 
 // InitializeScreen draws the static UI elements once
 func (sl *ScreenLayout) InitializeScreen() {
-	gd.ClearScreen()
+	ClearScreen()
 
 	// Draw the 4 AI player areas with face art
 	sl.drawAIPlayerAreas()
@@ -324,13 +322,13 @@ func (sl *ScreenLayout) drawAIPlayerAreas() {
 
 	for i, player := range aiPlayers {
 		// Draw player name
-		gd.MoveCursor(player.x, player.y)
-		fmt.Printf("%s%s%s", gd.CyanHi, player.name, gd.Reset)
+		MoveCursor(player.x, player.y)
+		fmt.Printf("%s%s%s", CyanHi, player.name, Reset)
 
 		// Draw simple face art placeholder (will be enhanced with actual art)
 		sl.drawSimpleFaceArt(player.x, player.y+1, i)
 
-		// Draw CP$37 card blocks (placeholder for now)
+		// Draw CP437 card blocks (placeholder for now)
 		sl.drawAICardBlocks(player.x, player.y+sl.FaceHeight+1, 5) // 5 cards max
 	}
 }
@@ -338,8 +336,8 @@ func (sl *ScreenLayout) drawAIPlayerAreas() {
 // drawHumanPlayerArea draws the human player area at bottom center
 func (sl *ScreenLayout) drawHumanPlayerArea() {
 	// Draw player name area
-	gd.MoveCursor(sl.HumanPlayerX, sl.HumanNameY)
-	fmt.Printf("%s[Player Area]%s", gd.GreenHi, gd.Reset)
+	MoveCursor(sl.HumanPlayerX, sl.HumanNameY)
+	fmt.Printf("%s[Player Area]%s", GreenHi, Reset)
 }
 
 // drawSimpleFaceArt draws character faces using exact CP437 from reference file
@@ -382,8 +380,8 @@ func (sl *ScreenLayout) drawSimpleFaceArt(x, y, playerIndex int) {
 
 	if playerIndex < len(faces) {
 		for i, line := range faces[playerIndex] {
-			gd.MoveCursor(x, y+i)
-			fmt.Printf("%s%s%s", gd.White, line, gd.Reset)
+			MoveCursor(x, y+i)
+			fmt.Printf("%s%s%s", White, line, Reset)
 		}
 	}
 }
@@ -395,8 +393,8 @@ func (sl *ScreenLayout) drawAICardBlocks(x, y, cardCount int) {
 		cardX := x + (i * 2) // Tight spacing for small blocks
 
 		// Small face-down card block - just a simple colored block
-		gd.MoveCursor(cardX, y)
-		fmt.Printf("%s\xdb\xdb%s", gd.Yellow, gd.Reset) // ██ (solid blocks)
+		MoveCursor(cardX, y)
+		fmt.Printf("%s\xdb\xdb%s", Yellow, Reset) // ██ (solid blocks)
 	}
 }
 
@@ -411,28 +409,28 @@ func (sl *ScreenLayout) drawGameLogBorder() {
 	borderLine := strings.Repeat(DOUBLE_HORIZONTAL_LINE, logW-2)
 
 	// Top border with proper blue background like reference
-	gd.MoveCursor(logX, logY)
+	MoveCursor(logX, logY)
 	fmt.Printf("\x1b[30;44m%s%s%s\x1b[0m", DOUBLE_TOP_LEFT_CORNER, borderLine, DOUBLE_TOP_RIGHT_CORNER)
 
 	// Side borders for each line with blue background
 	for i := 1; i <= sl.GameLogH; i++ {
-		gd.MoveCursor(logX, logY+i)
+		MoveCursor(logX, logY+i)
 		fmt.Printf("\x1b[30;44m%s\x1b[0m", DOUBLE_VERTICAL_LINE)
-		gd.MoveCursor(logX+logW-1, logY+i)
+		MoveCursor(logX+logW-1, logY+i)
 		fmt.Printf("\x1b[30;44m%s\x1b[0m", DOUBLE_VERTICAL_LINE)
 	}
 
 	// Bottom border with blue background
-	gd.MoveCursor(logX, logY+sl.GameLogH+1)
+	MoveCursor(logX, logY+sl.GameLogH+1)
 	fmt.Printf("\x1b[30;44m%s%s%s\x1b[0m", DOUBLE_BOTTOM_LEFT_CORNER, borderLine, DOUBLE_BOTTOM_RIGHT_CORNER)
 }
 
 // UpdateHeader updates the turn indicator and game status
 func (sl *ScreenLayout) UpdateHeader(round, handPot, sabaccPot, deckSize int, currentPlayer string) {
 	// Update turn indicator above game log using proper CP437 arrows
-	gd.MoveCursor(sl.TurnIndicatorX, sl.TurnIndicatorY)
-	fmt.Print(gd.EraseLine)
-	fmt.Printf("%s\x10 \x10 %s \x11 \x11%s", gd.YellowHi, currentPlayer, gd.Reset)
+	MoveCursor(sl.TurnIndicatorX, sl.TurnIndicatorY)
+	fmt.Print(EraseLine)
+	fmt.Printf("%s\x10 \x10 %s \x11 \x11%s", YellowHi, currentPlayer, Reset)
 
 	// Update bottom status line with pot information
 	sl.UpdateStatusLine(round, handPot, sabaccPot, deckSize)
@@ -440,8 +438,8 @@ func (sl *ScreenLayout) UpdateHeader(round, handPot, sabaccPot, deckSize int, cu
 
 // UpdateStatusLine updates the bottom status line with game info (CP437 style)
 func (sl *ScreenLayout) UpdateStatusLine(round, handPot, sabaccPot, deckSize int) {
-	gd.MoveCursor(1, sl.StatusY)
-	fmt.Print(gd.EraseLine)
+	MoveCursor(1, sl.StatusY)
+	fmt.Print(EraseLine)
 
 	// Create status line with cyan background like in reference file
 	statusLeft := fmt.Sprintf("\x1b[36;46m     \x1b[0;30;46m \x1b[1;37mGame Pot: \x1b[33m%d\x1b[36m \x1b[37m  Sabaac Pot: \x1b[33m%d\x1b[37m \x1b[36m \x1b[37m  Side Pot: \x1b[33m0\x1b[37m \x1b[36m \x1b[37m  Credits:\x1b[33m 22\x1b[37m \x1b[0;30;46m        \x1b[36;40m", handPot, sabaccPot)
@@ -455,20 +453,20 @@ func (sl *ScreenLayout) UpdateStatusLine(round, handPot, sabaccPot, deckSize int
 		fmt.Printf("\x1b[36;40m%s\x1b[37m", strings.Repeat(" ", remaining))
 	}
 
-	fmt.Print(gd.Reset)
+	fmt.Print(Reset)
 }
 
 // UpdatePlayerInfo updates a player's name, credits, and total for new layout
 func (sl *ScreenLayout) UpdatePlayerInfo(playerIndex int, name string, credits, total int, showTotal bool) {
 	switch playerIndex {
 	case 0: // Human player (bottom center)
-		gd.MoveCursor(sl.HumanPlayerX, sl.HumanNameY)
-		fmt.Print(gd.EraseLine)
+		MoveCursor(sl.HumanPlayerX, sl.HumanNameY)
+		fmt.Print(EraseLine)
 		if showTotal {
 			fmt.Printf("%s%s%s - Total: %s Credits: %d",
-				gd.GreenHi, name, gd.Reset, displayHandValue(total), credits)
+				GreenHi, name, Reset, displayHandValue(total), credits)
 		} else {
-			fmt.Printf("%s%s%s - Credits: %d", gd.GreenHi, name, gd.Reset, credits)
+			fmt.Printf("%s%s%s - Credits: %d", GreenHi, name, Reset, credits)
 		}
 	case 1, 2, 3, 4: // AI players (corners) - don't overwrite, just update credits below face art
 		var x, y int
@@ -483,10 +481,10 @@ func (sl *ScreenLayout) UpdatePlayerInfo(playerIndex int, name string, credits, 
 			x, y = sl.AIPlayer4X, sl.AIPlayer4Y+sl.FaceHeight+2
 		}
 		// Clear the line first, then write credits
-		gd.MoveCursor(x, y)
+		MoveCursor(x, y)
 		fmt.Print(strings.Repeat(" ", 10)) // Clear previous text
-		gd.MoveCursor(x, y)
-		fmt.Printf("%s$%d%s", gd.Yellow, credits, gd.Reset)
+		MoveCursor(x, y)
+		fmt.Printf("%s$%d%s", Yellow, credits, Reset)
 	}
 }
 
@@ -495,8 +493,8 @@ func (sl *ScreenLayout) ClearPlayerArea(playerIndex int) {
 	switch playerIndex {
 	case 0: // Human player (bottom center)
 		for i := 0; i < sl.CardHeight+1; i++ {
-			gd.MoveCursor(sl.HumanPlayerX, sl.HumanPlayerY+i)
-			fmt.Print(gd.EraseLine)
+			MoveCursor(sl.HumanPlayerX, sl.HumanPlayerY+i)
+			fmt.Print(EraseLine)
 		}
 	case 1, 2, 3, 4: // AI players (corners)
 		var x, y int
@@ -512,7 +510,7 @@ func (sl *ScreenLayout) ClearPlayerArea(playerIndex int) {
 		}
 		// Clear AI card area
 		for i := 0; i < sl.CardHeight+1; i++ {
-			gd.MoveCursor(x, y+i)
+			MoveCursor(x, y+i)
 			fmt.Print(strings.Repeat(" ", sl.FaceWidth))
 		}
 	}
@@ -521,8 +519,8 @@ func (sl *ScreenLayout) ClearPlayerArea(playerIndex int) {
 // ClearMenuArea clears the menu/command area
 func (sl *ScreenLayout) ClearMenuArea() {
 	for i := 0; i < 3; i++ { // Menu area is 3 lines
-		gd.MoveCursor(1, sl.MenuY+i)
-		fmt.Print(gd.EraseLine)
+		MoveCursor(1, sl.MenuY+i)
+		fmt.Print(EraseLine)
 		fmt.Print(VERTICAL_LINE + strings.Repeat(" ", sl.TerminalW-2) + VERTICAL_LINE)
 	}
 }
@@ -532,348 +530,178 @@ func (sl *ScreenLayout) ShowMenu(title string, options []MenuOption, prompt stri
 	sl.ClearMenuArea()
 
 	// Show title
-	gd.MoveCursor(2, sl.MenuY)
-	fmt.Printf("%s%s%s", gd.GreenHi, title, gd.Reset)
+	MoveCursor(2, sl.MenuY)
+	fmt.Printf("%s%s%s", GreenHi, title, Reset)
 
 	// Show options
-	gd.MoveCursor(2, sl.MenuY+1)
+	MoveCursor(2, sl.MenuY+1)
 	optionTexts := make([]string, 0)
 	for _, opt := range options {
 		if opt.Enabled {
-			optionText := fmt.Sprintf("%s[%s%c%s]%s%s",
-				gd.Yellow, gd.YellowHi, opt.Key, gd.Yellow, gd.White, opt.Description)
-			optionTexts = append(optionTexts, optionText)
+			text := fmt.Sprintf("[%s%c%s] %s", YellowHi, opt.Key, Yellow, opt.Description)
+			optionTexts = append(optionTexts, text)
 		}
 	}
-	fmt.Print(strings.Join(optionTexts, " "))
+	fmt.Printf("%s%s%s", White, strings.Join(optionTexts, "  "), Reset)
 
 	// Show prompt
-	gd.MoveCursor(2, sl.MenuY+2)
-	fmt.Printf("%s%s%s ", gd.Green, prompt, gd.Reset)
+	MoveCursor(2, sl.MenuY+2)
+	fmt.Printf("%s%s%s", Green, prompt, Reset)
 }
 
-// NewGameLog creates a new game log
-func NewGameLog(maxLines, startY, width int) *GameLog {
-	return &GameLog{
-		Messages: make([]string, 0),
-		MaxLines: maxLines,
-		StartY:   startY,
-		Width:    width,
+// ShowPlayerTurnMenu displays the player turn menu
+func (sl *ScreenLayout) ShowPlayerTurnMenu(round int) {
+	options := []MenuOption{
+		{'D', "Draw card", true},
+		{'T', "Trade card", true},
+		{'S', "Stand", true},
+		{'F', "Static Field", true},
+		{'C', "Call", round >= 2},
+		{'Q', "Fold", true},
 	}
+	sl.ShowMenu("Your Turn", options, "Choice: ")
 }
 
-// AddMessage adds a new message to the game log
-func (gl *GameLog) AddMessage(message string) {
-	// Truncate message if too long
-	if len(message) > gl.Width-6 { // Account for borders and margins
-		message = message[:gl.Width-9] + "..."
-	}
-
-	// Add to circular buffer
-	gl.Messages = append(gl.Messages, message)
-
-	// Remove oldest if we exceed max lines
-	if len(gl.Messages) > gl.MaxLines {
-		gl.Messages = gl.Messages[1:]
-	}
-
-	// Render updated log
-	gl.Render()
+// LogMessage adds a message to the game log
+func (sl *ScreenLayout) LogMessage(message, msgType string) {
+	sl.GameLog.AddMessage(message, msgType)
+	sl.RefreshGameLog()
 }
 
-// Render displays the current game log messages
-func (gl *GameLog) Render() {
-	// Clear log area content (not borders) - use proper positioning
-	for i := 0; i < gl.MaxLines; i++ {
-		gd.MoveCursor(19, gl.StartY+i)             // Position inside left border (GameLogX + 1)
-		fmt.Print(strings.Repeat(" ", gl.Width-2)) // Clear content area
-	}
-
-	// Display messages (most recent at bottom)
-	messageCount := len(gl.Messages)
-	for i, message := range gl.Messages {
-		lineY := gl.StartY + (gl.MaxLines - messageCount + i)
-		if lineY >= gl.StartY && lineY < gl.StartY+gl.MaxLines {
-			gd.MoveCursor(19, lineY) // Position inside left border (GameLogX + 1)
-			fmt.Print(message)
-		}
-	}
+// DisplayMessage shows a temporary message
+func (sl *ScreenLayout) DisplayMessage(message, msgType string, duration int) {
+	// Simple implementation - just add to log for now
+	sl.LogMessage(message, msgType)
 }
 
-// Clear clears all messages from the game log
-func (gl *GameLog) Clear() {
-	gl.Messages = make([]string, 0)
-	gl.Render()
-}
-
-// RenderPlayerCards renders cards for a specific player in their designated area
-func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, faceDown bool, cardRenderer *CardRenderer) {
-	// Clear the card area first
-	sl.ClearPlayerArea(playerIndex)
-
-	if len(cards) == 0 {
-		return
+// RefreshGameLog redraws the game log area
+func (sl *ScreenLayout) RefreshGameLog() {
+	// Clear the log area (inside borders)
+	for i := 0; i < sl.GameLog.MaxLines; i++ {
+		MoveCursor(sl.GameLogX+1, sl.GameLogY+1+i)
+		fmt.Print(strings.Repeat(" ", sl.GameLog.Width))
 	}
 
-	switch playerIndex {
-	case 0: // Human player (bottom center) - show full cards
-		if cardRenderer != nil && cardRenderer.Database != nil {
-			if faceDown {
-				// Render face-down cards for human (shouldn't normally happen)
-				for i, _ := range cards {
-					cardX := sl.HumanPlayerX + (i * 10) // Card spacing
-					if cardX > sl.TerminalW-10 {
-						break
-					}
-					cardRenderer.RenderFaceDownCard(cardX, sl.HumanPlayerY)
-				}
-			} else {
-				// Render face-up cards using CardRenderer
-				cardRenderer.RenderCards(cards, sl.HumanPlayerX, sl.HumanPlayerY)
+	// Display recent messages
+	messages := sl.GameLog.GetRecentMessages()
+	for i, msg := range messages {
+		if i < sl.GameLog.MaxLines {
+			MoveCursor(sl.GameLogX+2, sl.GameLogY+1+i)
+			// Truncate message if too long
+			if len(msg) > sl.GameLog.Width-2 {
+				msg = msg[:sl.GameLog.Width-5] + "..."
 			}
-		} else {
-			// ASCII fallback for human player
-			sl.renderHumanCardsASCII(cards, faceDown)
-		}
-	case 1, 2, 3, 4: // AI players (corners) - show CP$37 blocks
-		sl.renderAICards(playerIndex, len(cards))
-	}
-}
-
-// renderHumanCardsASCII provides ASCII fallback for human player cards
-func (sl *ScreenLayout) renderHumanCardsASCII(cards []Card, faceDown bool) {
-	gd.MoveCursor(sl.HumanPlayerX, sl.HumanPlayerY)
-
-	for i, card := range cards {
-		if i > 0 {
-			fmt.Print(" ")
-		}
-
-		if faceDown {
-			fmt.Printf("%s[??]%s", gd.Red, gd.Reset)
-		} else {
-			fmt.Printf("%s[%s]%s", getCardColor(card), card.String(), gd.Reset)
-		}
-
-		// Don't exceed terminal width
-		if (i+1)*5+sl.HumanPlayerX > sl.TerminalW-10 {
-			break
+			fmt.Print(msg)
 		}
 	}
 }
 
-// renderAICards renders CP$37 blocks for AI players
-func (sl *ScreenLayout) renderAICards(playerIndex int, cardCount int) {
+// RenderPlayerCards renders cards for a player
+func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, faceDown bool, renderer *CardRenderer) {
 	var x, y int
+
 	switch playerIndex {
-	case 1:
+	case 0: // Human player
+		x, y = sl.HumanPlayerX, sl.HumanPlayerY
+	case 1: // AI 1
 		x, y = sl.AIPlayer1X, sl.AIPlayer1Y+sl.FaceHeight+1
-	case 2:
+	case 2: // AI 2
 		x, y = sl.AIPlayer2X, sl.AIPlayer2Y+sl.FaceHeight+1
-	case 3:
+	case 3: // AI 3
 		x, y = sl.AIPlayer3X, sl.AIPlayer3Y+sl.FaceHeight+1
-	case 4:
+	case 4: // AI 4
 		x, y = sl.AIPlayer4X, sl.AIPlayer4Y+sl.FaceHeight+1
 	default:
 		return
 	}
 
-	// Draw updated CP$37 blocks based on actual card count
-	sl.drawAICardBlocks(x, y, cardCount)
-}
+	// Clear the card area first
+	sl.ClearPlayerArea(playerIndex)
 
-// renderCardsASCII provides ASCII fallback for card rendering
-func (sl *ScreenLayout) renderCardsASCII(cards []Card, startY int, faceDown bool) {
-	gd.MoveCursor(2, startY)
-	fmt.Print(VERTICAL_LINE + " ")
-
+	// Render cards
 	for i, card := range cards {
-		if i > 0 {
-			fmt.Print(" ")
-		}
-
+		cardX := x + (i * (sl.CardWidth + 1))
 		if faceDown {
-			fmt.Printf("%s[??]%s", gd.Red, gd.Reset)
+			// Show face-down cards as simple blocks
+			MoveCursor(cardX, y)
+			fmt.Printf("%s██%s", Yellow, Reset)
 		} else {
-			fmt.Printf("%s[%s]%s", getCardColor(card), card.String(), gd.Reset)
-		}
-
-		// Don't exceed terminal width
-		if (i+1)*5+2 > sl.TerminalW-10 {
-			break
+			// Show actual card
+			if renderer != nil {
+				MoveCursor(cardX, y)
+				renderer.RenderCard(card)
+			} else {
+				// Fallback text representation
+				MoveCursor(cardX, y)
+				fmt.Printf("[%s]", card.String())
+			}
 		}
 	}
 }
 
-// RenderStaticField renders the static field cards for the human player
-func (sl *ScreenLayout) RenderStaticField(cards []Card, cardRenderer *CardRenderer) {
-	staticFieldY := sl.HumanPlayerY + sl.CardHeight + 2 // Below human player cards
-
-	if len(cards) == 0 {
-		// Clear static field area if no cards
-		for i := 0; i < 2; i++ {
-			gd.MoveCursor(sl.HumanPlayerX, staticFieldY+i)
-			fmt.Print(strings.Repeat(" ", 40)) // Clear area
-		}
-		return
-	}
+// RenderStaticField renders the static field cards
+func (sl *ScreenLayout) RenderStaticField(cards []Card, renderer *CardRenderer) {
+	// Position static field below human player cards
+	staticY := sl.HumanPlayerY + sl.CardHeight + 2
 
 	// Clear static field area
-	for i := 0; i < 2; i++ {
-		gd.MoveCursor(sl.HumanPlayerX, staticFieldY+i)
-		fmt.Print(strings.Repeat(" ", 40)) // Clear area
+	MoveCursor(sl.HumanPlayerX, staticY-1)
+	fmt.Print(EraseLine)
+	fmt.Printf("%sStatic Field:%s", Cyan, Reset)
+
+	for i := 0; i < 2; i++ { // Clear 2 lines for static field
+		MoveCursor(sl.HumanPlayerX, staticY+i)
+		fmt.Print(EraseLine)
 	}
 
-	// Show static field label
-	gd.MoveCursor(sl.HumanPlayerX, staticFieldY)
-	fmt.Printf("%sStatic Field (Protected):%s", gd.Magenta, gd.Reset)
-
-	if cardRenderer != nil && cardRenderer.Database != nil {
-		// Use CardRenderer for better graphics
-		cardRenderer.RenderCards(cards, sl.HumanPlayerX, staticFieldY+1)
-	} else {
-		// ASCII fallback
-		gd.MoveCursor(sl.HumanPlayerX, staticFieldY+1)
-		for i, card := range cards {
-			if i > 0 {
-				fmt.Print(" ")
-			}
-			fmt.Printf("%s[%s]%s", getCardColor(card), card.String(), gd.Reset)
-
-			// Don't exceed terminal width
-			if (i+1)*5+sl.HumanPlayerX > sl.TerminalW-10 {
-				break
-			}
-		}
-	}
-}
-
-// UpdateTurnIndicator updates who's turn it is in the header
-func (sl *ScreenLayout) UpdateTurnIndicator(playerName string, isHumanTurn bool) {
-	// This function is a placeholder for future use
-	// Turn indication is currently handled by UpdateHeader
-	// Could be expanded to show turn indicator in a separate area if needed
-}
-
-// ShowPlayerTurnMenu shows the menu options for the human player's turn
-func (sl *ScreenLayout) ShowPlayerTurnMenu(round int) {
-	options := []MenuOption{
-		{'D', "raw card", true},
-		{'T', "rade card", true},
-		{'S', "tand", true},
-		{'F', "ield (static)", true},
-		{'C', "all hand", round >= 2}, // Only allow calling after round 2
-		{'Q', "uit/Fold", true},
-	}
-
-	// Use CP437 arrows for menu title
-	sl.ShowMenu("YOUR TURN", options, "Choice:")
-}
-
-// ShowBettingMenu shows betting options (for future expansion)
-func (sl *ScreenLayout) ShowBettingMenu() {
-	options := []MenuOption{
-		{'C', "heck/Call", true},
-		{'R', "aise", true},
-		{'F', "old", true},
-	}
-
-	sl.ShowMenu("BETTING PHASE", options, "Choice:")
-}
-
-// ShowTradeMenu shows available cards for trading
-func (sl *ScreenLayout) ShowTradeMenu(cards []Card) {
-	gd.MoveCursor(2, sl.MenuY)
-	fmt.Printf("%sTRADE A CARD - Select card to discard:%s", gd.GreenHi, gd.Reset)
-
-	gd.MoveCursor(2, sl.MenuY+1)
+	// Render static field cards
 	for i, card := range cards {
-		fmt.Printf("%s[%d]%s%s[%s]%s ",
-			gd.Green, i+1, gd.Reset,
-			getCardColor(card), card.String(), gd.Reset)
-	}
-	fmt.Printf("%s[0]%sCancel", gd.Red, gd.Reset)
-
-	gd.MoveCursor(2, sl.MenuY+2)
-	fmt.Printf("%sChoice:%s ", gd.Green, gd.Reset)
-}
-
-// ShowStaticFieldMenu shows static field management options
-func (sl *ScreenLayout) ShowStaticFieldMenu() {
-	options := []MenuOption{
-		{'1', " Place card in Static Field", true},
-		{'2', " Remove card from Static Field", true},
-		{'0', " Cancel", true},
-	}
-
-	sl.ShowMenu("STATIC FIELD MANAGEMENT", options, "Choice:")
-}
-
-// DisplayMessage shows a temporary message in the menu area
-func (sl *ScreenLayout) DisplayMessage(message string, messageType string, pauseSeconds int) {
-	sl.ClearMenuArea()
-
-	var coloredMessage string
-	switch messageType {
-	case "success":
-		coloredMessage = gd.GreenHi + message + gd.Reset
-	case "error":
-		coloredMessage = gd.RedHi + message + gd.Reset
-	case "warning":
-		coloredMessage = gd.YellowHi + message + gd.Reset
-	case "info":
-		coloredMessage = gd.CyanHi + message + gd.Reset
-	default:
-		coloredMessage = gd.White + message + gd.Reset
-	}
-
-	gd.MoveCursor(2, sl.MenuY+1)
-	fmt.Print(coloredMessage)
-
-	if pauseSeconds > 0 {
-		gd.MoveCursor(2, sl.MenuY+2)
-		fmt.Printf("%sPress any key to continue...%s", gd.Yellow, gd.Reset)
-	}
-}
-
-// ShowGameResults displays the final game results
-func (sl *ScreenLayout) ShowGameResults(players []Player) {
-	sl.ClearMenuArea()
-
-	gd.MoveCursor(2, sl.MenuY)
-	fmt.Printf("%sFINAL RESULTS:%s", gd.CyanHi, gd.Reset)
-
-	gd.MoveCursor(2, sl.MenuY+1)
-	for i, player := range players {
-		if i > 0 {
-			fmt.Print("  ")
+		cardX := sl.HumanPlayerX + (i * (sl.CardWidth + 1))
+		if renderer != nil {
+			MoveCursor(cardX, staticY)
+			renderer.RenderCard(card)
+		} else {
+			// Fallback text representation
+			MoveCursor(cardX, staticY)
+			fmt.Printf("[%s]", card.String())
 		}
-		fmt.Printf("%s: %s%d%s credits",
-			player.Name, gd.YellowHi, player.Credits, gd.Reset)
 	}
-
-	gd.MoveCursor(2, sl.MenuY+2)
-	fmt.Printf("%sPress any key to return to menu...%s", gd.Yellow, gd.Reset)
 }
 
-// Utility function to add colored messages to game log
-func (sl *ScreenLayout) LogMessage(message string, messageType string) {
-	var coloredMessage string
-
-	switch messageType {
-	case "info":
-		coloredMessage = gd.White + message + gd.Reset
-	case "action":
-		coloredMessage = gd.Yellow + message + gd.Reset
-	case "important":
-		coloredMessage = gd.RedHi + message + gd.Reset
+// GameLog methods
+func (gl *GameLog) AddMessage(message, msgType string) {
+	// Add color coding based on message type
+	coloredMsg := message
+	switch msgType {
+	case "error":
+		coloredMsg = Red + message + Reset
 	case "success":
-		coloredMessage = gd.GreenHi + message + gd.Reset
+		coloredMsg = Green + message + Reset
 	case "warning":
-		coloredMessage = gd.YellowHi + message + gd.Reset
-	default:
-		coloredMessage = message
+		coloredMsg = Yellow + message + Reset
+	case "important":
+		coloredMsg = RedHi + message + Reset
+	case "action":
+		coloredMsg = Cyan + message + Reset
+	case "info":
+		coloredMsg = White + message + Reset
 	}
 
-	sl.GameLog.AddMessage(coloredMessage)
+	gl.Messages = append(gl.Messages, coloredMsg)
+
+	// Keep only recent messages (circular buffer)
+	if len(gl.Messages) > gl.MaxLines*3 {
+		gl.Messages = gl.Messages[len(gl.Messages)-gl.MaxLines:]
+	}
+}
+
+func (gl *GameLog) GetRecentMessages() []string {
+	if len(gl.Messages) <= gl.MaxLines {
+		return gl.Messages
+	}
+	return gl.Messages[len(gl.Messages)-gl.MaxLines:]
+}
+
+func (gl *GameLog) Clear() {
+	gl.Messages = make([]string, 0)
 }
