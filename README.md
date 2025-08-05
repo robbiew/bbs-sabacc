@@ -8,10 +8,10 @@
                                                                               
     ♠ ♦ ♣ ♥    Classic 77-Card Sabacc for Bulletin Board Systems    ♠ ♦ ♣ ♥   
                                                                               
-           [█] Authentic 1989 West End Games Rules  [█]
-           [█] ANSI Color Terminal Support          [█] 
-           [█] Linux-based BBS Compatibility        [█]
-           [█] Player Statistics & Rankings (TODO)  [█]
+                 [█] Authentic 1989 West End Games Rules [█]
+                 [█] ANSI Color Terminal Support         [█] 
+                 [█] Linux-based BBS Compatibility       [█]
+                 [█] Player Statistics & Rankings (TODO) [█]
 ```
 
 # BBS Sabacc Installation Guide
@@ -410,3 +410,4 @@ Set appropriate idle timeouts:
 ```
 
 This completes the installation guide. Your BBS should now be ready to offer Classic Sabacc to your users!
+
