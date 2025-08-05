@@ -160,22 +160,13 @@ This guide will help you install and configure BBS Sabacc on your BBS system.
    chmod +x /path/to/your/bbs/doors/sabacc
    ```
 
-## Testing Installation
+## BBS Configuration
 
-Before configuring your BBS, test the game locally:
+"-path" is the only required parameter. Only Door32.sys is supported.
 
 ```bash
-# Use the included sample drop file
-./sabacc -path ./
-
-# Or create a custom test drop file
-echo -e "2\n8\n38400\nTest BBS\n1\nTest Player\nTestUser\n100\n90\n0\n1" > door32.sys
-./sabacc -path ./
-
-# You should see the title screen and main menu
+./sabacc -path /path/to/drop dir/
 ```
-
-## BBS Configuration
 
 ### Talisman BBS
 
@@ -291,10 +282,8 @@ Organize your installation as follows:
 ├── sabacc              # Main executable
 ├── sabacc_cards.bin    # Card database (REQUIRED)
 ├── sabacc.conf         # Configuration file (auto-created)
-├── stats/              # Player statistics (auto-created)
-└── ansi/               # ANSI art files (optional)
-    ├── title.ans
-    └── menu.ans
+└── stats/              # Player statistics (auto-created)
+   
 ```
 
 ## Configuration
@@ -329,162 +318,6 @@ You can edit this file to customize the game behavior:
 - **enable_statistics**: Track player statistics
 - **ai_personality**: AI behavior ("conservative", "balanced", "aggressive")
 
-### ANSI Art (Optional)
-
-Place custom ANSI art files in the `ansi/` directory:
-
-- **title.ans** - Title screen (displayed on startup)
-- **menu.ans** - Menu header  
-
-Files should use standard ANSI escape sequences. The game includes built-in ASCII art if these files are missing.
-
-## Verification
-
-After installation, verify everything works:
-
-1. **Check file permissions:**
-   ```bash
-   ls -la /path/to/doors/sabacc
-   # Should show: -rwxr-xr-x (executable)
-   ```
-
-2. **Test from command line:**
-   ```bash
-   /path/to/doors/sabacc -path /tmp/
-   # Should show error about missing door32.sys (this is normal)
-   ```
-
-3. **Test through your BBS:**
-   - Log into your BBS
-   - Navigate to the doors/games menu
-   - Run Sabacc
-   - Verify it displays properly with ANSI colors
-
-## Troubleshooting
-
-### Common Issues
-
-**"No such file or directory" when running sabacc:**
-- Check that the executable exists and has proper permissions
-- Verify the path in your BBS configuration is correct
-- Ensure the executable was built for the correct architecture
-
-**Game starts but shows format errors:**
-- Usually indicates a drop file format problem
-- Verify your BBS is creating door32.sys correctly
-- Check that the path parameter includes trailing slash
-
-**No ANSI colors:**
-- Verify the user's terminal supports ANSI
-- Check BBS emulation settings
-- Ensure door32.sys has emulation=1 for ANSI mode
-
-**Game crashes immediately:**
-- Check system logs for error messages
-- Verify Go runtime compatibility
-- Test with a manual drop file first
-
-**"Card database not found" error:**
-- Ensure `sabacc_cards.bin` is in the same directory as the executable
-- Regenerate the database: `go run cmd/build-cards/main.go`
-- Verify database integrity: `go run cmd/build-cards/main.go test`
-- Check file permissions on `sabacc_cards.bin`
-
-**"Invalid card database format" error:**
-- The database may be corrupted or from an older version
-- Regenerate with: `go run cmd/build-cards/main.go`
-- Ensure you're using the correct version of the build tool
-
-### Debug Steps
-
-1. **Create test environment:**
-   ```bash
-   cd /path/to/doors/
-   # Use the included sample drop file or create one
-   echo -e "2\n8\n38400\nTest BBS\n1\nTest Player\nTestUser\n100\n90\n0\n1" > door32.sys
-   ./sabacc -path ./
-   ```
-
-2. **Check dependencies:**
-   ```bash
-   ldd sabacc  # Shows required libraries
-   ```
-
-3. **Verify drop file format:**
-   ```bash
-   cat door32.sys  # Should show 11 lines of data
-   ```
-
-### Performance Notes
-
-- **Memory usage**: ~5-10MB per instance
-- **CPU usage**: Minimal (single-threaded, event-driven)
-- **Disk usage**: <1MB plus statistics files
-- **Concurrent users**: Supported (separate processes)
-
-### Security Considerations
-
-- Runs with BBS user permissions
-- No network connections made
-- Statistics stored in plain JSON (not sensitive)
-- No user input validation beyond game rules
-
-## Maintenance
-
-### Updating
-
-To update to a new version:
-
-1. **Backup your data:**
-   ```bash
-   cp -r /path/to/doors/sabacc/stats/ ~/sabacc-backup/
-   cp /path/to/doors/sabacc/sabacc.conf ~/sabacc-backup/
-   ```
-
-2. **Replace executable:**
-   ```bash
-   # Build new version
-   go build -ldflags="-s -w" -o sabacc .
-   
-   # Stop BBS or disable door temporarily
-   # Replace executable
-   cp sabacc /path/to/doors/sabacc/
-   
-   # Restart BBS or re-enable door
-   ```
-
-3. **Restore configuration:**
-   ```bash
-   # Configuration files are forward-compatible
-   # Statistics files are preserved automatically
-   ```
-
-### Log Monitoring
-
-Monitor your BBS logs for any door-related errors:
-
-```bash
-# Common log locations
-tail -f /var/log/mystic/mis*.log     # Mystic BBS
-tail -f /enigma-bbs/logs/system.log  # ENiGMA½
-# Check your specific BBS documentation for log locations
-```
-
-### Statistics Management
-
-Player statistics are stored in `stats/` directory as JSON files:
-
-```bash
-# View player stats
-ls -la stats/
-cat stats/player_name.json
-
-# Backup all statistics
-tar -czf sabacc-stats-backup.tar.gz stats/
-
-# Reset a player's stats (delete their file)
-rm stats/player_name.json
-```
 
 ## Future Enhancements
 
@@ -496,12 +329,9 @@ The following features are planned for future versions:
 - Custom AI personality settings
 
 ### Enhanced Features
-- Player statistics tracking and persistence
-- Tournament mode support
+- Player statistics tracking 
+- Tournament mode support?
 - Multiple AI difficulty levels
 - Custom ANSI art integration
-- Save/resume game functionality
+- Multiplayer lobby!
 
-To modify current game parameters, you'll need to edit the source code and recompile.
-
-This completes the installation guide. Your BBS should now be ready to offer Classic Sabacc to your users!
