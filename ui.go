@@ -51,6 +51,9 @@ type ScreenLayout struct {
 	FaceWidth  int // Width of character face art
 	FaceHeight int // Height of character face art
 
+	// Portrait system
+	PortraitManager *PortraitManager // Manages external ANSI portrait art
+
 	// Game log system
 	GameLog *GameLog
 }
@@ -127,6 +130,9 @@ func NewScreenLayout(termW, termH int) *ScreenLayout {
 		StartY:   layout.GameLogY + 2, // Inside border
 		Width:    layout.GameLogW - 2, // Inside border with padding
 	}
+
+	// Initialize portrait manager for external ANSI art
+	layout.PortraitManager = NewPortraitManager()
 
 	return layout
 }
@@ -340,9 +346,15 @@ func (sl *ScreenLayout) drawHumanPlayerArea() {
 	fmt.Printf("%s[Player Area]%s", GreenHi, Reset)
 }
 
-// drawSimpleFaceArt draws character faces using exact CP437 from reference file
+// drawSimpleFaceArt draws character faces using external portraits or built-in fallbacks
 func (sl *ScreenLayout) drawSimpleFaceArt(x, y, playerIndex int) {
-	// Exact CP437 face art from reference .ans file
+	// Try to use external portrait first
+	if sl.PortraitManager != nil {
+		sl.PortraitManager.RenderPortrait(x, y, playerIndex)
+		return
+	}
+
+	// Fall back to built-in CP437 face art from reference file
 	faces := [][]string{
 		{ // Phoo_ja (robot/droid) - top-left
 			"\xda" + "pppppppp" + "\xbf",
