@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/eiannone/keyboard"
@@ -65,8 +66,8 @@ func main() {
 	flag.Parse()
 
 	if *pathPtr == "" {
-		fmt.Fprintf(os.Stderr, "missing path to door32.sys directory: -path\n")
-		fmt.Fprintf(os.Stderr, "Usage: %s -path /path/to/dropfile/directory/\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "missing path to door32.sys directory: -path\r\n")
+		fmt.Fprintf(os.Stderr, "Usage: %s -path /path/to/dropfile/directory/\r\n", os.Args[0])
 		os.Exit(2)
 	}
 	DropPath = *pathPtr
@@ -198,13 +199,13 @@ func mainMenu() {
 
 		// Position cursor for menu options (after ANSI art)
 		MoveCursor(1, 4)
-		fmt.Print(Yellow + "[" + YellowHi + "N" + Yellow + "] " + White + "New Game\n" + Reset)
-		fmt.Print(Yellow + "[" + YellowHi + "R" + Yellow + "] " + White + "Rules\n" + Reset)
-		fmt.Print(Yellow + "[" + YellowHi + "S" + Yellow + "] " + White + "Statistics\n" + Reset)
-		fmt.Print(Yellow + "[" + YellowHi + "Q" + Yellow + "] " + White + "Quit to BBS\n\n" + Reset)
+		fmt.Print(Yellow + "[" + YellowHi + "N" + Reset + Yellow + "] " + White + "New Game\r\n" + Reset)
+		fmt.Print(Yellow + "[" + YellowHi + "R" + Reset + Yellow + "] " + White + "Rules\r\n" + Reset)
+		fmt.Print(Yellow + "[" + YellowHi + "S" + Reset + Yellow + "] " + White + "Statistics\r\n" + Reset)
+		fmt.Print(Yellow + "[" + YellowHi + "Q" + Reset + Yellow + "] " + White + "Quit to BBS\r\n\r\n" + Reset)
 
 		fmt.Print(Cyan + "Credits: " + CyanHi + "1000" + Reset + "  ")
-		fmt.Print(Cyan + "Time Left: " + CyanHi + strconv.Itoa(game.User.TimeLeft) + "m" + Reset + "\n\n")
+		fmt.Print(Cyan + "Time Left: " + CyanHi + strconv.Itoa(game.User.TimeLeft) + "m" + Reset + "\r\n\r\n")
 
 		fmt.Print(Green + "Choice: " + Reset)
 
@@ -228,9 +229,9 @@ func mainMenu() {
 
 // Helper function for simple fallback menu
 func displaySimpleMenu() {
-	fmt.Print(CyanHi + "-------------------------------------------\n" + Reset)
-	fmt.Print(CyanHi + "              SABACC CANTINA\n" + Reset)
-	fmt.Print(CyanHi + "-------------------------------------------\n\n" + Reset)
+	fmt.Print(CyanHi + "-------------------------------------------\r\n" + Reset)
+	fmt.Print(CyanHi + "              SABACC CANTINA\r\n" + Reset)
+	fmt.Print(CyanHi + "-------------------------------------------\r\n\r\n" + Reset)
 }
 
 func startNewGame() {
@@ -314,7 +315,7 @@ func gameLoop() {
 		// If only one player left, they win immediately
 		if activePlayers <= 1 {
 			if lastActivePlayer >= 0 {
-				fmt.Printf("\n%s%s wins by default (others folded)!%s\n",
+				fmt.Printf("\r\n%s%s wins by default (others folded)!%s\r\n",
 					GreenHi, game.Players[lastActivePlayer].Name, Reset)
 				game.Players[lastActivePlayer].Credits += game.HandPot
 
@@ -322,13 +323,13 @@ func gameLoop() {
 				if !game.Players[lastActivePlayer].Folded {
 					total := calculateHandTotal(game.Players[lastActivePlayer].Hand)
 					if total == 23 {
-						fmt.Printf("%s%s also wins the Sabacc Pot! (Pure Sabacc)%s\n",
+						fmt.Printf("%s%s also wins the Sabacc Pot! (Pure Sabacc)%s\r\n",
 							GreenHi, game.Players[lastActivePlayer].Name, Reset)
 						game.Players[lastActivePlayer].Credits += game.SabaccPot
 						game.SabaccPot = 0
 						displayAsciiArt("sabacc")
 					} else if isIdiotsArray(game.Players[lastActivePlayer].Hand) {
-						fmt.Printf("%s%s also wins the Sabacc Pot! (Idiot's Array)%s\n",
+						fmt.Printf("%s%s also wins the Sabacc Pot! (Idiot's Array)%s\r\n",
 							GreenHi, game.Players[lastActivePlayer].Name, Reset)
 						game.Players[lastActivePlayer].Credits += game.SabaccPot
 						game.SabaccPot = 0
@@ -490,8 +491,8 @@ func handlePlayerCall() bool {
 	game.Layout.DisplayMessage("CALL PHASE", "info", 0)
 	time.Sleep(1 * time.Second)
 
-	fmt.Print(Yellow + "[" + YellowHi + "C" + Yellow + "] " + White + "Call the hand (end game)\n" + Reset)
-	fmt.Print(Yellow + "[" + YellowHi + "N" + Yellow + "] " + White + "No call (continue)\n\n" + Reset)
+	fmt.Print(Yellow + "[" + YellowHi + "C" + Yellow + "] " + White + "Call the hand (end game)\r\n" + Reset)
+	fmt.Print(Yellow + "[" + YellowHi + "N" + Yellow + "] " + White + "No call (continue)\r\n\r\n" + Reset)
 	fmt.Print(Green + "Call choice: " + Reset)
 
 	char, _, err := getKeyWithTimeout()
@@ -828,9 +829,9 @@ func nextTurn() {
 
 func resolveHand() {
 	ClearScreen()
-	fmt.Print(CyanHi + "═══════════════════════════════════════════\n" + Reset)
-	fmt.Print(CyanHi + "                HAND RESULTS\n" + Reset)
-	fmt.Print(CyanHi + "═══════════════════════════════════════════\n\n" + Reset)
+	fmt.Print(CyanHi + strings.Repeat(DOUBLE_HORIZONTAL_LINE, 39) + "\r\n" + Reset)
+	fmt.Print(CyanHi + "                HAND RESULTS\r\n" + Reset)
+	fmt.Print(CyanHi + strings.Repeat(DOUBLE_HORIZONTAL_LINE, 39) + "\r\n\r\n" + Reset)
 
 	// Show all hands and determine winner
 	winner := -1
@@ -840,7 +841,7 @@ func resolveHand() {
 
 	for i, playerData := range game.Players {
 		if playerData.Folded {
-			fmt.Printf("%s%s: FOLDED%s\n", Red, playerData.Name, Reset)
+			fmt.Printf("%s%s: FOLDED%s\r\n", Red, playerData.Name, Reset)
 			continue
 		}
 
@@ -853,18 +854,18 @@ func resolveHand() {
 
 		// Check for special hands (Sabacc Pot winners)
 		if isIdiotsArray(playerData.Hand) {
-			fmt.Printf(" %s(IDIOT'S ARRAY!)%s\n", GreenHi, Reset)
+			fmt.Printf(" %s(IDIOT'S ARRAY!)%s\r\n", GreenHi, Reset)
 			displayAsciiArt("sabacc") // Show sabacc art for special hands
 			bestScore = 1000
 			sabaccWinner = i            // Idiot's Array beats Pure Sabacc
 			time.Sleep(3 * time.Second) // Let player see the art
 		} else if total == 23 && sabaccWinner == -1 {
-			fmt.Printf(" %s(PURE SABACC!)%s\n", GreenHi, Reset)
+			fmt.Printf(" %s(PURE SABACC!)%s\r\n", GreenHi, Reset)
 			displayAsciiArt("sabacc") // Show sabacc art for Pure Sabacc
 			sabaccWinner = i
 			time.Sleep(3 * time.Second) // Let player see the art
 		} else if total > 23 || total < -23 || total == 0 {
-			fmt.Printf(" %s(BOMBED OUT!)%s\n", Red, Reset)
+			fmt.Printf(" %s(BOMBED OUT!)%s\r\n", Red, Reset)
 			displayAsciiArt("bomb") // Show bomb art for bomb outs
 			game.Players[i].BombedOut = true
 			bombedOutPlayers = append(bombedOutPlayers, i)
@@ -887,9 +888,9 @@ func resolveHand() {
 	// Determine winners and distribute pots
 	if sabaccWinner >= 0 {
 		// Someone won with Pure Sabacc or Idiot's Array
-		fmt.Printf("%s%s wins both pots with a special hand!%s\n",
+		fmt.Printf("%s%s wins both pots with a special hand!%s\r\n",
 			GreenHi, game.Players[sabaccWinner].Name, Reset)
-		fmt.Printf("%s+%d credits (Hand Pot) +%d credits (Sabacc Pot)%s\n",
+		fmt.Printf("%s+%d credits (Hand Pot) +%d credits (Sabacc Pot)%s\r\n",
 			GreenHi, game.HandPot, game.SabaccPot, Reset)
 
 		game.Players[sabaccWinner].Credits += game.HandPot + game.SabaccPot
@@ -901,18 +902,18 @@ func resolveHand() {
 
 	} else if winner >= 0 {
 		// Regular hand winner
-		fmt.Printf("%s%s wins the hand! (+%d credits)%s\n",
+		fmt.Printf("%s%s wins the hand! (+%d credits)%s\r\n",
 			GreenHi, game.Players[winner].Name, game.HandPot, Reset)
 		game.Players[winner].Credits += game.HandPot
 
 	} else {
 		// Everyone bombed out or folded
-		fmt.Printf("%sNo winner! Hand pot goes to Sabacc pot.%s\n", Yellow, Reset)
+		fmt.Printf("%sNo winner! Hand pot goes to Sabacc pot.%s\r\n", Yellow, Reset)
 		game.SabaccPot += game.HandPot
 
 		// Show bomb art for the chaos
 		if len(bombedOutPlayers) > 1 {
-			fmt.Printf("\n%sEveryone bombed out!%s\n", RedHi, Reset)
+			fmt.Printf("\r\n%sEveryone bombed out!%s\r\n", RedHi, Reset)
 			displayAsciiArt("bomb")
 			time.Sleep(2 * time.Second)
 		}
@@ -920,9 +921,9 @@ func resolveHand() {
 
 	// Show penalty summary if anyone bombed out
 	if len(bombedOutPlayers) > 0 {
-		fmt.Printf("\n%sBomb Out Penalties:%s\n", Red, Reset)
+		fmt.Printf("\r\n%sBomb Out Penalties:%s\r\n", Red, Reset)
 		for _, playerIndex := range bombedOutPlayers {
-			fmt.Printf("%s%s paid %d credits to Sabacc Pot%s\n",
+			fmt.Printf("%s%s paid %d credits to Sabacc Pot%s\r\n",
 				Red, game.Players[playerIndex].Name, game.HandPot, Reset)
 		}
 	}
@@ -1250,9 +1251,9 @@ func isPartOfGoodCombination(card Card, allCards []Card) bool {
 
 func showGameResults() {
 	fmt.Println()
-	fmt.Printf("%sFinal Credits:%s\n", CyanHi, Reset)
+	fmt.Printf("%sFinal Credits:%s\r\n", CyanHi, Reset)
 	for _, playerData := range game.Players {
-		fmt.Printf("%s: %s%d%s credits\n", playerData.Name, YellowHi, playerData.Credits, Reset)
+		fmt.Printf("%s: %s%d%s credits\r\n", playerData.Name, YellowHi, playerData.Credits, Reset)
 	}
 	fmt.Println()
 	fmt.Print(Yellow + "Press any key to return to menu..." + Reset)
