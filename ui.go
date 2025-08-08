@@ -1,9 +1,20 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"regexp"
 	"strings"
+)
+
+var (
+	//go:embed ansi/sabacc.ans
+	SabaccLogo string
+)
+const (
+	Esc = "\u001B["
+	Osc = "\u001B]"
+	Bel = "\u0007"
 )
 
 // ScreenLayout manages the persistent UI layout for the Sabacc game
@@ -38,6 +49,10 @@ type ScreenLayout struct {
 	TurnIndicatorX int
 	TurnIndicatorY int
 
+	// Pot info area
+	PotInfoX int
+	PotInfoY int
+
 	// Bottom status and menu
 	StatusY int // Bottom status line (pots, credits)
 	MenuY   int // Action buttons line
@@ -56,6 +71,7 @@ type ScreenLayout struct {
 
 	// Game log system
 	GameLog *GameLog
+
 }
 
 // GameLog manages the scrolling message area
@@ -91,33 +107,37 @@ func NewScreenLayout(termW, termH int) *ScreenLayout {
 		TerminalH: fixedH,
 
 		// AI Player positions (4 corners) - adjusted for 9-column portraits
-		AIPlayer1X: 2, // Top-left (PHOOJA)
+		AIPlayer1X: 1, // Top-left (PHOOJA)
 		AIPlayer1Y: 1,
-		AIPlayer2X: fixedW - (portraitWidth + 3), // Top-right (ASH-TAAC) - 9 chars + padding
+		AIPlayer2X: 71, // Top-right (ASH-TAAC) 
 		AIPlayer2Y: 1,
-		AIPlayer3X: 2, // Bottom-left (OOLANGA)
-		AIPlayer3Y: 9,
-		AIPlayer4X: fixedW - (portraitWidth + 3), // Bottom-right (KY'ALA) - 9 chars + padding
-		AIPlayer4Y: 9,
+		AIPlayer3X: 1, // Bottom-left (OOLANGA)
+		AIPlayer3Y: 8,
+		AIPlayer4X: 71, // Bottom-right (KY'ALA) - 9 chars + padding
+		AIPlayer4Y: 8,
 
 		// Central game log area (blue bordered box from reference)
-		GameLogX: 18,
-		GameLogY: 6,
-		GameLogW: 42, // Fixed width to match reference file
-		GameLogH: 6,  // Reduced height for 24-row terminal
+		GameLogX: 28,
+		GameLogY: 4,
+		GameLogW: 25, // Fixed width to match reference file
+		GameLogH: 8,  // Reduced height for 24-row terminal
 
 		// Human player area (bottom center - fixed for 79x24)
 		HumanPlayerX: fixedW/2 - 15,
-		HumanPlayerY: 16, // Move higher to give space for cards above menu
+		HumanPlayerY: 17, // Move higher to give space for cards above menu
 		HumanNameY:   15,
 
 		// Turn indicator (above game log)
-		TurnIndicatorX: fixedW/2 - 8,
-		TurnIndicatorY: 4,
+		TurnIndicatorX: 2,
+		TurnIndicatorY: 20,
 
-		// Bottom UI elements (fixed positioning for 79x24)
-		StatusY: 24, // Status line always at row 24 (bottom row)
-		MenuY:   21, // Action buttons at row 21-23
+		// Pot info area (bottom right)
+		PotInfoX: fixedW - 20,
+		PotInfoY: 20,
+
+		// Status and Menu UI elements
+		StatusY: 16, // Status line always at row 16
+		MenuY:   24, // Action buttons at row 21-23
 
 		// Card and face display settings
 		CardWidth:   6,                 // Diamond card width (matches card database)
@@ -138,12 +158,16 @@ func NewScreenLayout(termW, termH int) *ScreenLayout {
 	// Initialize portrait manager for external ANSI art
 	layout.PortraitManager = NewPortraitManager()
 
+
+
 	return layout
 }
 
 // InitializeScreen draws the static UI elements once
 func (sl *ScreenLayout) InitializeScreen() {
 	ClearScreen()
+
+	PrintAnsiLoc(SabaccLogo, 29, 1)
 
 	// Draw the 4 AI player areas with face art
 	sl.drawAIPlayerAreas()
@@ -321,22 +345,27 @@ var (
 func (sl *ScreenLayout) drawAIPlayerAreas() {
 	// AI player names and their positions - must match main.go names
 	aiPlayers := []struct {
-		name string
-		x, y int
+		name   string
+		x, y   int
+		isLeft bool
 	}{
-		{"PHOOJA", sl.AIPlayer1X, sl.AIPlayer1Y},   // Top-left
-		{"ASH-TAAC", sl.AIPlayer2X, sl.AIPlayer2Y}, // Top-right
-		{"OOLANGA", sl.AIPlayer3X, sl.AIPlayer3Y},  // Bottom-left
-		{"KY'ALA", sl.AIPlayer4X, sl.AIPlayer4Y},   // Bottom-right
+		{"PHOOJA", sl.AIPlayer1X, sl.AIPlayer1Y, true},     // Top-left
+		{"ASH-TAAC", sl.AIPlayer2X, sl.AIPlayer2Y, false}, // Top-right
+		{"OOLANGA", sl.AIPlayer3X, sl.AIPlayer3Y, true},    // Bottom-left
+		{"KY'ALA", sl.AIPlayer4X, sl.AIPlayer4Y, false},     // Bottom-right
 	}
 
 	for i, player := range aiPlayers {
-		// Draw player name
-		MoveCursor(player.x, player.y)
-		fmt.Printf("%s%s%s", CyanHi, player.name, Reset)
-
 		// Draw portrait from ANSI file
-		sl.drawSimpleFaceArt(player.x, player.y+1, i)
+		sl.drawSimpleFaceArt(player.x, player.y, i)
+
+		// Draw player name and credits
+		if player.isLeft {
+			MoveCursor(player.x+portraitWidth+1, player.y)
+		} else {
+			MoveCursor(player.x-len(player.name)-1, player.y)
+		}
+		fmt.Printf("%s%s%s", CyanHi, player.name, Reset)
 	}
 }
 
@@ -355,42 +384,48 @@ func (sl *ScreenLayout) drawSimpleFaceArt(x, y, playerIndex int) {
 	}
 }
 
-// drawGameLogBorder draws the border around the game log area (matching reference file)
+// drawGameLogBorder fills the entire game log area with blue background (no borders)
 func (sl *ScreenLayout) drawGameLogBorder() {
 	// Use exact positioning from reference file
 	logX := sl.GameLogX
 	logY := sl.GameLogY
 	logW := sl.GameLogW
 
-	// Create horizontal line
-	borderLine := strings.Repeat(DOUBLE_HORIZONTAL_LINE, logW-2)
-
-	// Top border with proper blue background like reference
-	MoveCursor(logX, logY)
-	fmt.Printf("\x1b[30;44m%s%s%s\x1b[0m", DOUBLE_TOP_LEFT_CORNER, borderLine, DOUBLE_TOP_RIGHT_CORNER)
-
-	// Side borders for each line with blue background
-	for i := 1; i <= sl.GameLogH; i++ {
+	// Fill entire game log area with blue background
+	for i := 0; i <= sl.GameLogH; i++ {
 		MoveCursor(logX, logY+i)
-		fmt.Printf("\x1b[30;44m%s\x1b[0m", DOUBLE_VERTICAL_LINE)
-		MoveCursor(logX+logW-1, logY+i)
-		fmt.Printf("\x1b[30;44m%s\x1b[0m", DOUBLE_VERTICAL_LINE)
+		fmt.Printf("\x1b[30;44m%s\x1b[0m", strings.Repeat(" ", logW))
 	}
-
-	// Bottom border with blue background
-	MoveCursor(logX, logY+sl.GameLogH+1)
-	fmt.Printf("\x1b[30;44m%s%s%s\x1b[0m", DOUBLE_BOTTOM_LEFT_CORNER, borderLine, DOUBLE_BOTTOM_RIGHT_CORNER)
 }
 
 // UpdateHeader updates the turn indicator and game status
 func (sl *ScreenLayout) UpdateHeader(round, handPot, sabaccPot, deckSize int, currentPlayer string) {
-	// Update turn indicator above game log using proper CP437 arrows
-	MoveCursor(sl.TurnIndicatorX, sl.TurnIndicatorY)
-	fmt.Print(EraseLine)
-	fmt.Printf("%s\x10 \x10 %s \x11 \x11%s", YellowHi, currentPlayer, Reset)
+	// Update turn indicator
+	sl.drawTurnIndicator(currentPlayer)
+
+	// Update pot info
+	sl.drawPotInfo(handPot, sabaccPot, 0)
 
 	// Update bottom status line with pot information
 	sl.UpdateStatusLine(round, handPot, sabaccPot, deckSize)
+}
+
+func (sl *ScreenLayout) drawTurnIndicator(currentPlayer string) {
+	MoveCursor(sl.TurnIndicatorX, sl.TurnIndicatorY)
+	fmt.Print(EraseLine)
+	fmt.Printf("%s\x10 YOUR TURN \x11%s", YellowHi, Reset)
+}
+
+func (sl *ScreenLayout) drawPotInfo(gamePot, sabaccPot, sidePot int) {
+	MoveCursor(sl.PotInfoX, sl.PotInfoY)
+	fmt.Print(EraseLine)
+	fmt.Printf("Game Pot: %d", gamePot)
+	MoveCursor(sl.PotInfoX, sl.PotInfoY+1)
+	fmt.Print(EraseLine)
+	fmt.Printf("Sabacc Pot: %d", sabaccPot)
+	MoveCursor(sl.PotInfoX, sl.PotInfoY+2)
+	fmt.Print(EraseLine)
+	fmt.Printf("Side Pot: %d", sidePot)
 }
 
 // UpdateStatusLine updates the bottom status line with game info (CP437 style)
@@ -529,30 +564,45 @@ func (sl *ScreenLayout) DisplayMessage(message, msgType string, duration int) {
 	sl.LogMessage(message, msgType)
 }
 
-// RefreshGameLog redraws the game log area
+// RefreshGameLog redraws the game log area with blue background
 func (sl *ScreenLayout) RefreshGameLog() {
-	// Clear the log area (inside borders)
-	for i := 0; i < sl.GameLog.MaxLines; i++ {
-		MoveCursor(sl.GameLogX+1, sl.GameLogY+1+i)
-		fmt.Print(strings.Repeat(" ", sl.GameLog.Width))
+	// Clear the log area with blue background
+	for i := 0; i <= sl.GameLogH; i++ {
+		MoveCursor(sl.GameLogX, sl.GameLogY+i)
+		fmt.Printf("\x1b[30;44m%s\x1b[0m", strings.Repeat(" ", sl.GameLogW))
 	}
 
-	// Display recent messages
+	// Display recent messages with blue background
 	messages := sl.GameLog.GetRecentMessages()
 	for i, msg := range messages {
-		if i < sl.GameLog.MaxLines {
-			MoveCursor(sl.GameLogX+2, sl.GameLogY+1+i)
+		if i < sl.GameLogH {
+			MoveCursor(sl.GameLogX, sl.GameLogY+i)
+			
+			// Start with blue background for entire line
+			fmt.Print("\x1b[30;44m")
+			
 			// Truncate message if too long
-			if len(msg) > sl.GameLog.Width-2 {
-				msg = msg[:sl.GameLog.Width-5] + "..."
+			if len(msg) > sl.GameLogW-2 {
+				msg = msg[:sl.GameLogW-5] + "..."
 			}
-			fmt.Print(msg)
+			
+			// Print message with padding
+			fmt.Printf(" %s", msg)
+			
+			// Calculate remaining space and fill with blue background
+			msgLen := len(stripANSI(msg))
+			if msgLen < sl.GameLogW-2 {
+				remaining := sl.GameLogW - msgLen - 2
+				fmt.Printf("\x1b[30;44m%s", strings.Repeat(" ", remaining))
+			}
+			
+			fmt.Print("\x1b[0m") // Reset at end of line
 		}
 	}
 }
 
 // RenderPlayerCards renders cards for a player
-func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, faceDown bool, renderer *CardRenderer) {
+func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticField []Card, faceDown bool, renderer *CardRenderer) {
 	var x, y int
 
 	switch playerIndex {
@@ -575,6 +625,14 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, faceDow
 
 	// Render cards
 	for i, card := range cards {
+		isStatic := false
+		for _, staticCard := range staticField {
+			if card == staticCard {
+				isStatic = true
+				break
+			}
+		}
+
 		if faceDown {
 			// Show face-down AI cards as colored suit blocks (like reference image)
 			if playerIndex > 0 { // AI players
@@ -597,12 +655,29 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, faceDow
 				// Render card row by row with proper cursor positioning
 				cardX := x + (i * 4) // Keep original spacing for human cards
 				sl.renderCardAtPosition(cardX, y, card, renderer)
+				if isStatic {
+					MoveCursor(cardX+2, y+sl.CardHeight)
+					fmt.Print("*")
+				}
 			} else {
 				// Fallback text representation
 				cardX := x + (i * 4)
 				MoveCursor(cardX, y)
 				fmt.Printf("[%s]", card.String())
+				if isStatic {
+					MoveCursor(cardX+1, y+1)
+					fmt.Print("*")
+				}
 			}
+		}
+	}
+
+	// Render AI static field card values
+	if playerIndex > 0 {
+		for i, card := range staticField {
+			cardX := x + (i * 4)
+			MoveCursor(cardX, y+1)
+			fmt.Printf("%s%d%s", Yellow, card.Value, Reset)
 		}
 	}
 }
@@ -721,4 +796,15 @@ func (sl *ScreenLayout) renderCardAtPosition(x, y int, card Card, renderer *Card
 		MoveCursor(x, y+i)
 		fmt.Print(line)
 	}
+}
+
+// trimSauceData removes SAUCE metadata from ANSI content (similar to godoors TrimString)
+func (sl *ScreenLayout) trimSauceData(content string) string {
+	// Look for SAUCE00 marker which indicates the start of SAUCE metadata
+	if sauceIndex := strings.Index(content, "SAUCE00"); sauceIndex != -1 {
+		// Remove everything from SAUCE00 onwards
+		return content[:sauceIndex]
+	}
+	// If no SAUCE metadata found, return as-is
+	return content
 }

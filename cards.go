@@ -529,25 +529,6 @@ func (cr *CardRenderer) renderFallbackBack(x, y int) {
 	fmt.Print("[??]")
 }
 
-// Utility function to create the card database
-func CreateCardDatabase() {
-	fmt.Println("Creating Sabacc card database...")
-
-	db := &CardDatabase{
-		Filename: "sabacc_cards.bin",
-	}
-
-	_, err := db.CreateDefault()
-	if err != nil {
-		fmt.Printf("Error creating database: %v\n", err)
-		return
-	}
-
-	fmt.Println("Card database created successfully!")
-	fmt.Printf("File: %s\n", db.Filename)
-	fmt.Printf("Cards: %d\n", len(db.CardIndex))
-	fmt.Printf("Size: %d bytes\n", len(db.FileData))
-}
 
 // Also check that your cards.go has proper String() method:
 func (c Card) String() string {

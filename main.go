@@ -21,6 +21,7 @@ var (
 	TitleScreen string
 	//go:embed ansi/menu.ans
 	MenuScreen string
+
 )
 
 // SabaccGame represents the main game state
@@ -107,20 +108,6 @@ func main() {
 		Layout:       NewScreenLayout(u.W, u.H), // Initialize persistent UI
 	}
 
-	// DEBUG: Show portrait loading errors
-	if game.Layout.PortraitManager != nil {
-		errors := game.Layout.PortraitManager.GetDebugErrors()
-		if len(errors) > 0 {
-			fmt.Println("=== PORTRAIT DEBUG INFO ===")
-			for _, err := range errors {
-				fmt.Println(err)
-			}
-			fmt.Println("============================")
-			fmt.Println("Press Enter to continue...")
-			fmt.Scanln()
-		}
-	}
-
 	// Show title screen
 	showTitleScreen()
 
@@ -132,36 +119,13 @@ func showTitleScreen() {
 	ClearScreen()
 	MoveCursor(0, 0)
 
-	// Try to display the ANSI title screen first
-	if _, err := os.Stat("ansi/title.ans"); err == nil {
-		// ANSI file exists, use it
-		file, err := os.ReadFile("ansi/title.ans")
-		if err == nil {
-			fmt.Print(string(file))
-		} else {
-			// Fall back to embedded title if file read fails
-			fmt.Print(TitleScreen)
-		}
-	} else {
-		// ANSI file doesn't exist, use embedded title or simple fallback
-		if TitleScreen != "" {
-			fmt.Print(TitleScreen)
-		} else {
-			// Simple fallback if no embedded title
-			centerY := game.User.H / 2
-			MoveCursor(1, centerY-6)
-			displayAsciiArt("sabacc")
-
-			MoveCursor(1, centerY+2)
-			fmt.Print(Cyan + "Classic 76-Card Sabacc for BBS" + Reset)
-		}
-	}
+	PrintAnsiLoc(TitleScreen, 1, 1)
 
 	// Add welcome message and continue prompt at bottom
-	MoveCursor(1, game.User.H-4)
+	MoveCursor(2, game.User.H-4)
 	fmt.Print(White + "Welcome, " + CyanHi + game.User.Alias + Reset)
 
-	MoveCursor(1, game.User.H-2)
+	MoveCursor(2, game.User.H-2)
 	fmt.Print(Yellow + "Press any key to continue..." + Reset)
 
 	waitForKey()
@@ -172,36 +136,12 @@ func mainMenu() {
 		ClearScreen()
 		MoveCursor(0, 0)
 
-		// Try to display the ANSI menu screen first
-		if _, err := os.Stat("ansi/menu.ans"); err == nil {
-			// ANSI file exists, use it
-			file, err := os.ReadFile("ansi/menu.ans")
-			if err == nil {
-				fmt.Print(string(file))
-			} else {
-				// Fall back to embedded menu if file read fails
-				if MenuScreen != "" {
-					fmt.Print(MenuScreen)
-				} else {
-					// Simple fallback menu
-					displaySimpleMenu()
-				}
-			}
-		} else {
-			// ANSI file doesn't exist, use embedded menu or simple fallback
-			if MenuScreen != "" {
-				fmt.Print(MenuScreen)
-			} else {
-				// Simple fallback menu
-				displaySimpleMenu()
-			}
-		}
+		PrintAnsiLoc(MenuScreen, 1, 1)
 
 		// Position cursor for menu options (after ANSI art)
 		MoveCursor(1, 4)
 		fmt.Print(Yellow + "[" + YellowHi + "N" + Reset + Yellow + "] " + White + "New Game\r\n" + Reset)
 		fmt.Print(Yellow + "[" + YellowHi + "R" + Reset + Yellow + "] " + White + "Rules\r\n" + Reset)
-		fmt.Print(Yellow + "[" + YellowHi + "S" + Reset + Yellow + "] " + White + "Statistics\r\n" + Reset)
 		fmt.Print(Yellow + "[" + YellowHi + "Q" + Reset + Yellow + "] " + White + "Quit to BBS\r\n\r\n" + Reset)
 
 		fmt.Print(Cyan + "Credits: " + CyanHi + "1000" + Reset + "  ")
@@ -219,19 +159,10 @@ func mainMenu() {
 			startNewGame()
 		case char == 'r' || char == 'R':
 			showRules()
-		case char == 's' || char == 'S':
-			showStats()
 		case char == 'q' || char == 'Q' || key == keyboard.KeyEsc:
 			exitGame()
 		}
 	}
-}
-
-// Helper function for simple fallback menu
-func displaySimpleMenu() {
-	fmt.Print(CyanHi + "-------------------------------------------\r\n" + Reset)
-	fmt.Print(CyanHi + "              SABACC CANTINA\r\n" + Reset)
-	fmt.Print(CyanHi + "-------------------------------------------\r\n\r\n" + Reset)
 }
 
 func startNewGame() {
@@ -952,7 +883,7 @@ func displayGameScreen() {
 		game.Layout.UpdatePlayerInfo(i, aiPlayer.Name, aiPlayer.Credits, 0, false)
 
 		// Render AI player's cards (as CP437 blocks)
-		game.Layout.RenderPlayerCards(i, aiPlayer.Hand, true, game.CardRenderer)
+		game.Layout.RenderPlayerCards(i, aiPlayer.Hand, aiPlayer.StaticField, true, game.CardRenderer)
 	}
 
 	// Update human player (index 0)
@@ -967,7 +898,7 @@ func displayGameScreen() {
 		game.Layout.UpdatePlayerInfo(0, player.Name, player.Credits, total, true)
 
 		// Render player's cards (face up)
-		game.Layout.RenderPlayerCards(0, player.Hand, false, game.CardRenderer)
+		game.Layout.RenderPlayerCards(0, player.Hand, player.StaticField, false, game.CardRenderer)
 
 		// Render static field
 		game.Layout.RenderStaticField(player.StaticField, game.CardRenderer)

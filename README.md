@@ -22,7 +22,7 @@
 While the core Sabacc gameplay mechanics are implemented and functional, there is still significant work to be done on:
 
 - **User Interface & Experience**: Screen layouts, ANSI art integration, menu systems
-- **Gameplay Features**: Tournament mode, save/resume functionality, enhanced AI strategies  
+- **Gameplay Features**: Turns, rules, enhanced AI strategies  
 - **Player Statistics**: Persistent stat tracking, leaderboards, achievement system
 - **Configuration**: Advanced game settings, difficulty levels, economy balancing
 - **Polish & Testing**: Bug fixes, performance optimization, extensive BBS testing
@@ -279,11 +279,12 @@ Organize your installation as follows:
 
 ```
 /path/to/doors/sabacc/
-├── sabacc              # Main executable
-├── sabacc_cards.bin    # Card database (REQUIRED)
-├── sabacc.conf         # Configuration file (auto-created)
-└── stats/              # Player statistics (auto-created)
-   
+├── sabacc              # Main executable (required)
+├── sabacc_cards.bin    # Card database (required)
+├── sabacc.conf         # Configuration file (auto-generated)
+└── ansi/
+    └── portraits.ans   # AI player portraits (optional)
+
 ```
 
 ## Configuration
@@ -334,5 +335,3 @@ The following features are planned for future versions:
 - Multiple AI difficulty levels
 - Custom ANSI art integration
 - Multiplayer lobby!
-
-

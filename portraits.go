@@ -135,13 +135,6 @@ func (pm *PortraitManager) loadFromStackedANSI(filename string) error {
 	return nil
 }
 
-// Helper function for min
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
 
 // trimSauceData removes SAUCE metadata from ANSI content (similar to godoors TrimStringFromSauce)
 func (pm *PortraitManager) trimSauceData(content string) string {

@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/eiannone/keyboard"
 )
@@ -239,34 +241,7 @@ func showRules() {
 	waitForKey()
 }
 
-// showStats displays player statistics (updated to mention Classic Sabacc)
-func showStats() {
-	ClearScreen()
-	fmt.Print(CyanHi + strings.Repeat("\xcd", 43) + "\n" + Reset)
-	fmt.Print(CyanHi + "            PLAYER STATISTICS\n" + Reset)
-	fmt.Print(CyanHi + strings.Repeat("\xcd", 43) + "\n\n" + Reset)
 
-	fmt.Print(Yellow + "Player: " + CyanHi + game.User.Alias + Reset + "\n\n")
-
-	// Placeholder stats - in a real implementation, these would be saved/loaded
-	fmt.Print(White + "Games Played: " + YellowHi + "0\n" + Reset)
-	fmt.Print(White + "Games Won: " + YellowHi + "0\n" + Reset)
-	fmt.Print(White + "Pure Sabaccs: " + YellowHi + "0\n" + Reset)
-	fmt.Print(White + "Idiot's Arrays: " + YellowHi + "0\n" + Reset)
-	fmt.Print(White + "Bomb Outs: " + YellowHi + "0\n" + Reset)
-	fmt.Print(White + "Sabacc Shifts Survived: " + YellowHi + "0\n" + Reset)
-	fmt.Print(White + "Credits Won: " + YellowHi + "0\n" + Reset)
-	fmt.Print(White + "Credits Lost: " + YellowHi + "0\n\n" + Reset)
-
-	fmt.Print(Red + "Statistics tracking not yet implemented.\n" + Reset)
-	fmt.Print(Red + "This feature will be added in a future version.\n\n" + Reset)
-
-	fmt.Print(Cyan + "Classic Sabacc follows the original West End Games\n" + Reset)
-	fmt.Print(Cyan + "rules from the 1989 Crisis on Cloud City supplement.\n\n" + Reset)
-
-	fmt.Print(Yellow + "Press any key to return to menu..." + Reset)
-	waitForKey()
-}
 
 // exitGame handles clean exit (updated message)
 func exitGame() {
@@ -282,63 +257,6 @@ func exitGame() {
 	os.Exit(0)
 }
 
-// displayWelcomeMessage shows a welcome message with game info
-func displayWelcomeMessage() {
-	fmt.Printf("%sWelcome to the Classic Sabacc tables, %s%s%s!\n\n",
-		Cyan, CyanHi, game.User.Alias, Reset)
-	fmt.Printf("%sTerminal: %s%dx%d%s  ",
-		Yellow, YellowHi, game.User.W, game.User.H, Reset)
-	fmt.Printf("%sNode: %s%d%s  ",
-		Yellow, YellowHi, game.User.NodeNum, Reset)
-	fmt.Printf("%sTime: %s%dm%s\n\n",
-		Yellow, YellowHi, game.User.TimeLeft, Reset)
-}
-
-// clearStatusLine clears the bottom status line
-func clearStatusLine() {
-	MoveCursor(1, game.User.H)
-	fmt.Print(EraseLine)
-}
-
-// showStatusLine displays a status message at the bottom
-func showStatusLine(message string) {
-	clearStatusLine()
-	MoveCursor(1, game.User.H)
-	fmt.Print(Yellow + message + Reset)
-}
-
-// animateCardDeal provides a simple animation effect (placeholder)
-func animateCardDeal() {
-	fmt.Print(Yellow + "Dealing" + Reset)
-	for i := 0; i < 3; i++ {
-		time.Sleep(300 * time.Millisecond)
-		fmt.Print(".")
-	}
-	fmt.Println()
-	time.Sleep(500 * time.Millisecond)
-}
-
-// displayDeckInfo shows remaining cards in deck
-func displayDeckInfo() {
-	fmt.Printf("%sDeck: %s%d cards remaining%s\n",
-		Magenta, MagentaHi, len(game.Deck.Cards), Reset)
-}
-
-// checkBombOut checks if a hand is bombed out
-func checkBombOut(hand []Card) bool {
-	total := calculateHandTotal(hand)
-	return total > 23 || total < -23 || total == 0
-}
-
-// formatCredits formats credits with proper color coding
-func formatCredits(amount int) string {
-	if amount > 0 {
-		return GreenHi + fmt.Sprintf("+%d", amount) + Reset
-	} else if amount < 0 {
-		return RedHi + fmt.Sprintf("%d", amount) + Reset
-	}
-	return Yellow + "0" + Reset
-}
 
 // displayHandValue shows the current hand value with color coding
 func displayHandValue(total int) string {
@@ -355,27 +273,6 @@ func displayHandValue(total int) string {
 	}
 }
 
-// saveGameStats saves game statistics (placeholder for future implementation)
-func saveGameStats(won bool, credits int) {
-	// TODO: Implement statistics saving to a file
-	// This could save to a JSON file or simple text file
-	// Stats to track: games played, won, lost, credits, special hands, etc.
-}
-
-// loadGameStats loads game statistics (placeholder for future implementation)
-func loadGameStats() map[string]int {
-	// TODO: Implement statistics loading from a file
-	// Return default stats for now
-	return map[string]int{
-		"games_played": 0,
-		"games_won":    0,
-		"pure_sabacc":  0,
-		"idiots_array": 0,
-		"bomb_outs":    0,
-		"credits_won":  0,
-		"credits_lost": 0,
-	}
-}
 
 // displayAsciiArt shows ASCII art for special events
 func displayAsciiArt(artType string) {
@@ -407,15 +304,41 @@ func displayAsciiArt(artType string) {
 	}
 }
 
-// Debug function to help identify the formatting issues
-func debugGameState() {
-	fmt.Printf("DEBUG: HandPot type: %T, value: %v\n", game.HandPot, game.HandPot)
-	fmt.Printf("DEBUG: SabaccPot type: %T, value: %v\n", game.SabaccPot, game.SabaccPot)
-	fmt.Printf("DEBUG: Round type: %T, value: %v\n", game.Round, game.Round)
 
-	if len(game.Players) > 0 {
-		fmt.Printf("DEBUG: Player credits type: %T, value: %v\n",
-			game.Players[0].Credits, game.Players[0].Credits)
-		fmt.Printf("DEBUG: Player hand length: %d\n", len(game.Players[0].Hand))
+func TrimStringFromSauce(s string) string {
+	if idx := strings.Index(s, "COMNT"); idx != -1 {
+		string := s
+		delimiter := "COMNT"
+		leftOfDelimiter := strings.Split(string, delimiter)[0]
+		trim := TrimLastChar(leftOfDelimiter)
+		return trim
+	}
+	if idx := strings.Index(s, "SAUCE00"); idx != -1 {
+		string := s
+		delimiter := "SAUCE00"
+		leftOfDelimiter := strings.Split(string, delimiter)[0]
+		trim := TrimLastChar(leftOfDelimiter)
+		return trim
+	}
+	return s
+}
+
+func TrimLastChar(s string) string {
+	r, size := utf8.DecodeLastRuneInString(s)
+	if r == utf8.RuneError && (size == 0 || size == 1) {
+		size = 0
+	}
+	return s[:len(s)-size]
+}
+
+func PrintAnsiLoc(artfile string, x int, y int) {
+	yLoc := y
+
+	noSauce := TrimStringFromSauce(artfile) // strip off the SAUCE metadata
+	s := bufio.NewScanner(strings.NewReader(string(noSauce)))
+
+	for s.Scan() {
+		fmt.Fprintf(os.Stdout, Esc+strconv.Itoa(yLoc)+";"+strconv.Itoa(x)+"f"+s.Text())
+		yLoc++
 	}
 }
