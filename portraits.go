@@ -201,6 +201,9 @@ func (pm *PortraitManager) GetPortrait(aiPlayerIndex int) *Portrait {
 
 // RenderPortrait renders a portrait at the specified screen position
 func (pm *PortraitManager) RenderPortrait(x, y, aiPlayerIndex int) {
+	// Debug: Show which portrait index is being used for each AI player
+	portraitIndex := pm.SelectedPortraits[aiPlayerIndex]
+
 	portrait := pm.GetPortrait(aiPlayerIndex)
 	if portrait == nil {
 		// Fall back to simple placeholder - also show debug info if available
@@ -208,7 +211,7 @@ func (pm *PortraitManager) RenderPortrait(x, y, aiPlayerIndex int) {
 		if len(pm.debugErrors) > 0 {
 			fmt.Printf("DEBUG ERR")
 		} else {
-			fmt.Printf("  [AI %d]  ", aiPlayerIndex+1)
+			fmt.Printf("  [AI %d-%d]  ", aiPlayerIndex+1, portraitIndex)
 		}
 		return
 	}
