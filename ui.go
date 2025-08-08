@@ -80,20 +80,24 @@ func stripANSI(s string) string {
 	return ansiRegexp.ReplaceAllString(s, "")
 }
 
-// NewScreenLayout creates a new screen layout for the given terminal size
+// NewScreenLayout creates a new screen layout for fixed 79x24 dimensions
 func NewScreenLayout(termW, termH int) *ScreenLayout {
-	layout := &ScreenLayout{
-		TerminalW: termW,
-		TerminalH: termH,
+	// Force fixed dimensions regardless of actual terminal size
+	fixedW := 79
+	fixedH := 24
 
-		// AI Player positions (4 corners) - adjusted for 24-row terminal
-		AIPlayer1X: 2, // Top-left (Phoo_ja)
+	layout := &ScreenLayout{
+		TerminalW: fixedW,
+		TerminalH: fixedH,
+
+		// AI Player positions (4 corners) - adjusted for 9-column portraits
+		AIPlayer1X: 2, // Top-left (PHOOJA)
 		AIPlayer1Y: 1,
-		AIPlayer2X: termW - 15, // Top-right (Rsh-Taac)
+		AIPlayer2X: fixedW - (portraitWidth + 3), // Top-right (ASH-TAAC) - 9 chars + padding
 		AIPlayer2Y: 1,
-		AIPlayer3X: 2, // Bottom-left (Soladi)
+		AIPlayer3X: 2, // Bottom-left (OOLANGA)
 		AIPlayer3Y: 9,
-		AIPlayer4X: termW - 15, // Bottom-right (Ky'Ola)
+		AIPlayer4X: fixedW - (portraitWidth + 3), // Bottom-right (KY'ALA) - 9 chars + padding
 		AIPlayer4Y: 9,
 
 		// Central game log area (blue bordered box from reference)
@@ -102,25 +106,25 @@ func NewScreenLayout(termW, termH int) *ScreenLayout {
 		GameLogW: 42, // Fixed width to match reference file
 		GameLogH: 6,  // Reduced height for 24-row terminal
 
-		// Human player area (bottom center - adjusted for 24 rows)
-		HumanPlayerX: termW/2 - 15,
-		HumanPlayerY: 16,
+		// Human player area (bottom center - fixed for 79x24)
+		HumanPlayerX: fixedW/2 - 15,
+		HumanPlayerY: 16, // Move higher to give space for cards above menu
 		HumanNameY:   15,
 
 		// Turn indicator (above game log)
-		TurnIndicatorX: termW/2 - 8,
+		TurnIndicatorX: fixedW/2 - 8,
 		TurnIndicatorY: 4,
 
-		// Bottom UI elements (properly positioned for 24 rows)
-		StatusY: 24, // Status line at row 23 (pots, credits)
-		MenuY:   20, // Action buttons at row 20-22
+		// Bottom UI elements (fixed positioning for 79x24)
+		StatusY: 24, // Status line always at row 24 (bottom row)
+		MenuY:   21, // Action buttons at row 21-23
 
 		// Card and face display settings
-		CardWidth:   6,  // Diamond card width (matches card database)
-		CardHeight:  5,  // Diamond card height (matches new diamond cards)
-		MaxCardsRow: 8,  // More cards fit with smaller diamond cards
-		FaceWidth:   10, // Character face art width
-		FaceHeight:  6,  // Character face art height
+		CardWidth:   6,                 // Diamond card width (matches card database)
+		CardHeight:  5,                 // Diamond card height (matches new diamond cards)
+		MaxCardsRow: 8,                 // More cards fit with smaller diamond cards
+		FaceWidth:   portraitWidth + 2, // Portrait width + 2 for borders (9+2=11)
+		FaceHeight:  portraitHeight,    // Portrait height (6 rows)
 	}
 
 	// Initialize game log with proper dimensions
@@ -313,17 +317,17 @@ var (
 
 )
 
-// drawAIPlayerAreas draws the 4 AI player areas with face art and card blocks
+// drawAIPlayerAreas draws the 4 AI player areas with face art
 func (sl *ScreenLayout) drawAIPlayerAreas() {
-	// AI player names and their positions
+	// AI player names and their positions - must match main.go names
 	aiPlayers := []struct {
 		name string
 		x, y int
 	}{
-		{"Phoo_ja", sl.AIPlayer1X, sl.AIPlayer1Y},  // Top-left
-		{"Rsh-Taac", sl.AIPlayer2X, sl.AIPlayer2Y}, // Top-right
-		{"Soladi", sl.AIPlayer3X, sl.AIPlayer3Y},   // Bottom-left
-		{"Ky'Ola", sl.AIPlayer4X, sl.AIPlayer4Y},   // Bottom-right
+		{"PHOOJA", sl.AIPlayer1X, sl.AIPlayer1Y},   // Top-left
+		{"ASH-TAAC", sl.AIPlayer2X, sl.AIPlayer2Y}, // Top-right
+		{"OOLANGA", sl.AIPlayer3X, sl.AIPlayer3Y},  // Bottom-left
+		{"KY'ALA", sl.AIPlayer4X, sl.AIPlayer4Y},   // Bottom-right
 	}
 
 	for i, player := range aiPlayers {
@@ -331,11 +335,8 @@ func (sl *ScreenLayout) drawAIPlayerAreas() {
 		MoveCursor(player.x, player.y)
 		fmt.Printf("%s%s%s", CyanHi, player.name, Reset)
 
-		// Draw simple face art placeholder (will be enhanced with actual art)
+		// Draw portrait from ANSI file
 		sl.drawSimpleFaceArt(player.x, player.y+1, i)
-
-		// Draw CP437 card blocks (placeholder for now)
-		sl.drawAICardBlocks(player.x, player.y+sl.FaceHeight+1, 5) // 5 cards max
 	}
 }
 
@@ -346,67 +347,11 @@ func (sl *ScreenLayout) drawHumanPlayerArea() {
 	fmt.Printf("%s[Player Area]%s", GreenHi, Reset)
 }
 
-// drawSimpleFaceArt draws character faces using external portraits or built-in fallbacks
+// drawSimpleFaceArt draws character faces using external portraits
 func (sl *ScreenLayout) drawSimpleFaceArt(x, y, playerIndex int) {
-	// Try to use external portrait first
+	// Use external portrait from ANSI file
 	if sl.PortraitManager != nil {
 		sl.PortraitManager.RenderPortrait(x, y, playerIndex)
-		return
-	}
-
-	// Fall back to built-in CP437 face art from reference file
-	faces := [][]string{
-		{ // Phoo_ja (robot/droid) - top-left
-			"\xda" + "pppppppp" + "\xbf",
-			"\xb3" + " \x09\xdb\xdb\xdb\x09 " + "\xb3",
-			"\xb3" + " \x09\xdb\xdb\xdb\x09 " + "\xb3",
-			"\xb3" + "  \xc4--\xc4  " + "\xb3",
-			"\xb3" + "   \xc4\xc4   " + "\xb3",
-			"\xc0" + "\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd" + "\xd9",
-		},
-		{ // Rsh-Taac (alien) - top-right
-			"\xda" + "pppppppp" + "\xbf",
-			"\xb3" + "  \x07\xdb\xdb\x07  " + "\xb3",
-			"\xb3" + " o\xdb\xdb\xdb\xdbo " + "\xb3",
-			"\xb3" + "   \xdb\xdb   " + "\xb3",
-			"\xb3" + "   \xdb\xdb   " + "\xb3",
-			"\xc0" + "\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd" + "\xd9",
-		},
-		{ // Soladi (human) - bottom-left
-			"\xda" + "pppppppp" + "\xbf",
-			"\xb3" + " \x09    \x09 " + "\xb3",
-			"\xb3" + "  \x07\x07\x07\x07  " + "\xb3",
-			"\xb3" + "  \x07\x07\x07\x07  " + "\xb3",
-			"\xb3" + "   \xdb\xdb   " + "\xb3",
-			"\xc0" + "\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd" + "\xd9",
-		},
-		{ // Ky'Ola (alien) - bottom-right
-			"\xda" + "pppppppp" + "\xbf",
-			"\xb3" + "      " + "\xb3",
-			"\xb3" + " \xcd\xcd    " + "\xb3",
-			"\xb3" + " \xcd\xcd    " + "\xb3",
-			"\xb3" + "   \xcd\xcd   " + "\xb3",
-			"\xc0" + "\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd" + "\xd9",
-		},
-	}
-
-	if playerIndex < len(faces) {
-		for i, line := range faces[playerIndex] {
-			MoveCursor(x, y+i)
-			fmt.Printf("%s%s%s", White, line, Reset)
-		}
-	}
-}
-
-// drawAICardBlocks draws simple face-down card blocks for AI players
-func (sl *ScreenLayout) drawAICardBlocks(x, y, cardCount int) {
-	// Simple face-down card blocks (from reference file pattern)
-	for i := 0; i < cardCount && i < 6; i++ { // Max 6 cards
-		cardX := x + (i * 2) // Tight spacing for small blocks
-
-		// Small face-down card block - just a simple colored block
-		MoveCursor(cardX, y)
-		fmt.Printf("%s\xdb\xdb%s", Yellow, Reset) // ██ (solid blocks)
 	}
 }
 
@@ -512,19 +457,17 @@ func (sl *ScreenLayout) ClearPlayerArea(playerIndex int) {
 		var x, y int
 		switch playerIndex {
 		case 1:
-			x, y = sl.AIPlayer1X, sl.AIPlayer1Y+sl.FaceHeight+1
+			x, y = sl.AIPlayer1X, 8
 		case 2:
-			x, y = sl.AIPlayer2X, sl.AIPlayer2Y+sl.FaceHeight+1
+			x, y = sl.AIPlayer2X, 8
 		case 3:
 			x, y = sl.AIPlayer3X, sl.AIPlayer3Y+sl.FaceHeight+1
 		case 4:
 			x, y = sl.AIPlayer4X, sl.AIPlayer4Y+sl.FaceHeight+1
 		}
 		// Clear AI card area
-		for i := 0; i < sl.CardHeight+1; i++ {
-			MoveCursor(x, y+i)
-			fmt.Print(strings.Repeat(" ", sl.FaceWidth))
-		}
+		MoveCursor(x, y)
+		fmt.Print(strings.Repeat(" ", sl.FaceWidth))
 	}
 }
 
@@ -615,13 +558,13 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, faceDow
 	switch playerIndex {
 	case 0: // Human player
 		x, y = sl.HumanPlayerX, sl.HumanPlayerY
-	case 1: // AI 1
-		x, y = sl.AIPlayer1X, sl.AIPlayer1Y+sl.FaceHeight+1
-	case 2: // AI 2
-		x, y = sl.AIPlayer2X, sl.AIPlayer2Y+sl.FaceHeight+1
-	case 3: // AI 3
+	case 1: // AI 1 - Top-left, cards at bottom of corner area
+		x, y = sl.AIPlayer1X, 8
+	case 2: // AI 2 - Top-right, cards at bottom of corner area
+		x, y = sl.AIPlayer2X, 8
+	case 3: // AI 3 - Bottom-left, cards at bottom of corner area
 		x, y = sl.AIPlayer3X, sl.AIPlayer3Y+sl.FaceHeight+1
-	case 4: // AI 4
+	case 4: // AI 4 - Bottom-right, cards at bottom of corner area
 		x, y = sl.AIPlayer4X, sl.AIPlayer4Y+sl.FaceHeight+1
 	default:
 		return
@@ -632,18 +575,31 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, faceDow
 
 	// Render cards
 	for i, card := range cards {
-		cardX := x + (i * (sl.CardWidth + 1))
 		if faceDown {
-			// Show face-down cards as simple blocks
-			MoveCursor(cardX, y)
-			fmt.Printf("%s██%s", Yellow, Reset)
-		} else {
-			// Show actual card
-			if renderer != nil {
+			// Show face-down AI cards as colored suit blocks (like reference image)
+			if playerIndex > 0 { // AI players
+				suitColor := getSuitColorForAI(card)
+				valueStr := getCardValueDisplay(card)
+
+				// Position each card with proper spacing (one space between cards)
+				cardX := x + (i * (len(valueStr) + 1))
 				MoveCursor(cardX, y)
-				renderer.RenderCard(card)
+				fmt.Printf("%s%s%s", suitColor, valueStr, Reset)
+			} else {
+				// Human player face-down cards
+				cardX := x + (i * 4) // Keep original spacing for human cards
+				MoveCursor(cardX, y)
+				fmt.Printf("%s%s%s%s", Yellow, SOLID_BLOCK, SOLID_BLOCK, Reset)
+			}
+		} else {
+			// Show actual card for human player
+			if renderer != nil && playerIndex == 0 {
+				// Render card row by row with proper cursor positioning
+				cardX := x + (i * 4) // Keep original spacing for human cards
+				sl.renderCardAtPosition(cardX, y, card, renderer)
 			} else {
 				// Fallback text representation
+				cardX := x + (i * 4)
 				MoveCursor(cardX, y)
 				fmt.Printf("[%s]", card.String())
 			}
@@ -716,4 +672,53 @@ func (gl *GameLog) GetRecentMessages() []string {
 
 func (gl *GameLog) Clear() {
 	gl.Messages = make([]string, 0)
+}
+
+// Helper functions for AI card rendering
+
+// getSuitColorForAI returns the appropriate color for AI card blocks based on suit
+func getSuitColorForAI(card Card) string {
+	switch card.Suit {
+	case "Sabers", "Flasks":
+		return "\x1b[32;42m" // Green background for Sabers and Flasks
+	case "Coins", "Staves":
+		return "\x1b[33;43m" // Brown/Yellow background for Coins and Staves
+	case "Arcana":
+		return "\x1b[31;41m" // Red background for Arcana cards
+	default:
+		return "\x1b[37;47m" // White background for unknown suits
+	}
+}
+
+// getCardValueDisplay returns a short display value for AI cards
+func getCardValueDisplay(card Card) string {
+	if card.Value > 0 {
+		return fmt.Sprintf("%d", card.Value)
+	} else if card.Value < 0 {
+		return fmt.Sprintf("%d", card.Value) // Show negative values
+	}
+	return "0"
+}
+
+// renderCardAtPosition renders a card at a specific position using proper cursor positioning
+func (sl *ScreenLayout) renderCardAtPosition(x, y int, card Card, renderer *CardRenderer) {
+	// Get card data from the database
+	cardID := card.String()
+	data, _, height, err := renderer.Database.GetCardData(cardID)
+	if err != nil {
+		// Fallback to simple representation
+		MoveCursor(x, y)
+		fmt.Printf("[%s]", card.String())
+		return
+	}
+
+	// Split ANSI data into lines and render each line
+	lines := strings.Split(string(data), "\r\n")
+	for i, line := range lines {
+		if i >= height {
+			break
+		}
+		MoveCursor(x, y+i)
+		fmt.Print(line)
+	}
 }

@@ -74,12 +74,9 @@ func main() {
 	// Get door32.sys, h, w as user object
 	u := Initialize(DropPath)
 
-	// Exit if no ANSI capabilities
-	if u.Emulation != 1 {
-		fmt.Println("Sorry, ANSI is required to play Sabacc...")
-		time.Sleep(time.Duration(2) * time.Second)
-		os.Exit(0)
-	}
+	// Note: Removing strict ANSI check as some BBS systems may report emulation differently
+	// The game will work with any terminal that supports basic ANSI escape sequences
+	// Original check: if u.Emulation != 1 { ... }
 
 	// Initialize keyboard
 	if err := keyboard.Open(); err != nil {
@@ -107,6 +104,20 @@ func main() {
 		Dealer:       0,
 		MinRounds:    config.MinRoundsToCall,    // From configuration
 		Layout:       NewScreenLayout(u.W, u.H), // Initialize persistent UI
+	}
+
+	// DEBUG: Show portrait loading errors
+	if game.Layout.PortraitManager != nil {
+		errors := game.Layout.PortraitManager.GetDebugErrors()
+		if len(errors) > 0 {
+			fmt.Println("=== PORTRAIT DEBUG INFO ===")
+			for _, err := range errors {
+				fmt.Println(err)
+			}
+			fmt.Println("============================")
+			fmt.Println("Press Enter to continue...")
+			fmt.Scanln()
+		}
 	}
 
 	// Show title screen
@@ -242,10 +253,10 @@ func startNewGame() {
 	// Setup players: 1 human + 4 AI players to match UI layout
 	game.Players = []Player{
 		{Name: game.User.Alias, Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false}, // Human player
-		{Name: "Phoo_ja", Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},       // AI 1 (top-left)
-		{Name: "Rsh-Taac", Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},      // AI 2 (top-right)
-		{Name: "Soladi", Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},        // AI 3 (bottom-left)
-		{Name: "Ky'Ola", Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},        // AI 4 (bottom-right)
+		{Name: "PHOOJA", Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},        // AI 1 (top-left)
+		{Name: "ASH-TAAC", Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},      // AI 2 (top-right)
+		{Name: "OOLANGA", Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},       // AI 3 (bottom-left)
+		{Name: "KY'ALA", Credits: config.StartingCredits, Hand: []Card{}, StaticField: []Card{}, Folded: false, BombedOut: false},        // AI 4 (bottom-right)
 	}
 
 	// ANTE PHASE - Both players ante into both pots
@@ -402,15 +413,14 @@ func handlePlayerBetting() bool {
 	game.Layout.DisplayMessage("BETTING PHASE", "info", 0)
 	time.Sleep(1 * time.Second)
 
-	game.Layout.LogMessage("Betting options:", "info")
-	fmt.Print(Yellow + "[" + YellowHi + "C" + Yellow + "] " + White + "Check/Call current bet\n" + Reset)
-	fmt.Print(Yellow + "[" + YellowHi + "R" + Yellow + "] " + White + "Raise bet\n" + Reset)
-	fmt.Print(Yellow + "[" + YellowHi + "F" + Yellow + "] " + White + "Fold (1 credit penalty)\n\n" + Reset)
-
-	if game.CurrentBet > 0 {
-		fmt.Printf("%sCurrent bet: %s%d%s credits\n", Yellow, YellowHi, game.CurrentBet, Reset)
+	// Use the same menu system as player turn menu
+	bettingOptions := []MenuOption{
+		{'C', "Check/Call current bet", true},
+		{'R', "Raise bet", true},
+		{'F', "Fold (1 credit penalty)", true},
 	}
-	fmt.Print(Green + "Betting choice: " + Reset)
+
+	game.Layout.ShowMenu("Betting Phase", bettingOptions, "Betting choice: ")
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
