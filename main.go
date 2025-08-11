@@ -22,6 +22,7 @@ var (
 	//go:embed ansi/menu.ans
 	MenuScreen string
 
+
 )
 
 // SabaccGame represents the main game state
@@ -76,10 +77,6 @@ func main() {
 	// Get door32.sys, h, w as user object
 	u := Initialize(DropPath)
 
-	// Note: Removing strict ANSI check as some BBS systems may report emulation differently
-	// The game will work with any terminal that supports basic ANSI escape sequences
-	// Original check: if u.Emulation != 1 { ... }
-
 	// Initialize keyboard
 	if err := keyboard.Open(); err != nil {
 		fmt.Println(err)
@@ -107,6 +104,9 @@ func main() {
 		MinRounds:    config.MinRoundsToCall,    // From configuration
 		Layout:       NewScreenLayout(u.W, u.H), // Initialize persistent UI
 	}
+
+	// Set global gameLayout reference for timeout warnings
+	gameLayout = game.Layout
 
 	// Show title screen
 	showTitleScreen()
@@ -292,9 +292,7 @@ func gameLoop() {
 		} else { // Computer player
 			// Only process turn if computer hasn't folded
 			if !game.Players[game.Turn].Folded {
-				// Computer can call if it's round 2 or later
-				canCall := game.Round >= 2
-				handleComputerTurn(canCall)
+				handleComputerTurn()
 			} else {
 				// Computer folded, skip to next turn
 				nextTurn()
@@ -492,7 +490,7 @@ func handlePlayerDraw() {
 	}
 }
 
-func handleComputerTurn(canCall bool) {
+func handleComputerTurn() {
 	computer := &game.Players[game.Turn]
 
 	if computer.Folded {
@@ -933,12 +931,14 @@ func evaluateAICallDecision(playerIndex int, combinedTotal int) bool {
 	if combinedTotal >= 20 && combinedTotal <= 22 {
 		// More aggressive calling if opponents have visible weak cards
 		opponentStrength := assessOpponentStrengthFromVisibleCards(playerIndex, visibleCards)
-		if opponentStrength == "weak" {
+		switch opponentStrength {
+		case "weak":
 			return combinedTotal >= 20
-		} else if opponentStrength == "strong" {
+		case "strong":
 			return combinedTotal >= 22 // Only call with very strong hands
+		default: // "moderate"
+			return combinedTotal >= 21 // Moderate calling threshold
 		}
-		return combinedTotal >= 21 // Moderate calling threshold
 	}
 
 	// Conservative approach for medium hands (15-19)
@@ -1053,15 +1053,24 @@ func assessOpponentStrengthFromVisibleCards(playerIndex int, visibleCards []Card
 	strongCardCount := 0
 	weakCardCount := 0
 
-	for i, player := range game.Players {
-		if i != playerIndex && !player.Folded && len(player.StaticField) > 0 {
-			// Analyze visible cards in opponent's static field
-			for _, card := range player.StaticField {
-				if card.Value >= 10 || card.Value <= -10 {
-					strongCardCount++
-				} else if card.Value >= -5 && card.Value <= 5 {
-					weakCardCount++
-				}
+	// Analyze visible cards, excluding current player's static field cards
+	currentPlayerStatic := game.Players[playerIndex].StaticField
+	
+	for _, card := range visibleCards {
+		// Skip cards that belong to current player's static field
+		isCurrentPlayerCard := false
+		for _, playerCard := range currentPlayerStatic {
+			if card.Value == playerCard.Value && card.Suit == playerCard.Suit {
+				isCurrentPlayerCard = true
+				break
+			}
+		}
+		
+		if !isCurrentPlayerCard {
+			if card.Value >= 10 || card.Value <= -10 {
+				strongCardCount++
+			} else if card.Value >= -5 && card.Value <= 5 {
+				weakCardCount++
 			}
 		}
 	}
@@ -1173,11 +1182,7 @@ func isPartOfGoodCombination(card Card, allCards []Card) bool {
 
 	// High-value cards that help reach Pure Sabacc
 	total := calculateHandTotal(allCards)
-	if total+card.Value == 23 {
-		return true
-	}
-
-	return false
+	return total+card.Value == 23
 }
 
 func showGameResults() {

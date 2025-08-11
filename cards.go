@@ -248,8 +248,8 @@ func (db *CardDatabase) CreateDefault() (*CardDatabase, error) {
 	cardData["BACK"] = db.generateBackCardANSI()
 
 	// Set standard dimensions - diamond shaped Sabacc cards
-	db.CardWidth = 6  // Diamond cards are narrower
-	db.CardHeight = 5 // Diamond cards are 5 lines high
+	db.CardWidth = 6  
+	db.CardHeight = 5 
 
 	// Write header
 	header := make([]byte, 32)
@@ -605,9 +605,7 @@ func NewDeck() Deck {
 	}
 
 	// Add one copy of each Arcana card (16 cards) - 1989 Classic Rules
-	for _, arcana := range ArcanaCards {
-		cards = append(cards, arcana)
-	}
+	cards = append(cards, ArcanaCards...)
 
 	// Total: 60 + 16 = 76 cards (authentic 1989 West End Games deck)
 	return Deck{Cards: cards}
@@ -679,10 +677,6 @@ func isIdiotsArray(hand []Card) bool {
 	}
 
 	return hasIdiot && hasTwo && hasThree && len(hand) == 3
-}
-
-func isPureSabacc(hand []Card) bool {
-	return calculateHandTotal(hand) == 23
 }
 
 func handleTradeCard() {

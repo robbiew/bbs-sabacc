@@ -56,10 +56,9 @@ type Timer struct {
 
 // Global variables (replacing godoors globals)
 var (
-	Idle              = 300 // Default idle timeout in seconds
-	CurrentUser       User
-	idleTimer         *Timer
-	terminalInitiated = false
+	Idle       = 300 // Default idle timeout in seconds
+	CurrentUser User
+	gameLayout *ScreenLayout // Reference to game layout for timeout warnings
 )
 
 // Terminal Control Functions (replacing godoors functions)
@@ -134,20 +133,45 @@ func Initialize(dropPath string) User {
 	}
 
 	CurrentUser = user
-	terminalInitiated = true
 
 	return user
 }
 
-// getKeyWithTimeout waits for a key press with idle timeout
+// getKeyWithTimeout waits for a key press with idle timeout and warning
 func getKeyWithTimeout() (rune, keyboard.Key, error) {
+	// Calculate warning time (10 seconds before timeout)
+	warningTime := Idle - 10
+	if warningTime < 1 {
+		warningTime = Idle / 2 // If timeout is very short, warn at halfway point
+	}
+
+	// Start warning timer
+	warningTimer := NewTimer(warningTime, func() {
+		if gameLayout != nil && game != nil {
+			// Send warning to game log
+			game.Layout.LogMessage("⚠ Are you still here? Auto-logout in 10 seconds!", "warning")
+		} else {
+			// Fallback warning for menu screens
+			fmt.Print(YellowHi + "\r\n⚠ Are you still here? Auto-logout in 10 seconds!" + Reset + "\r\n")
+		}
+	})
+
 	// Start the idle timer
-	shortTimer := NewTimer(Idle, func() {
-		fmt.Println("\r\nYou've been idle for too long... exiting!")
-		time.Sleep(1 * time.Second)
+	idleTimer := NewTimer(Idle, func() {
+		if gameLayout != nil && game != nil {
+			game.Layout.LogMessage("Timed out!", "error")
+			time.Sleep(1 * time.Second)
+		}
+		fmt.Println(RedHi + "\r\nYou've been idle for too long... exiting!" + Reset)
+		time.Sleep(2 * time.Second)
 		os.Exit(0)
 	})
-	defer shortTimer.Stop()
+
+	// Clean up timers when we get input
+	defer func() {
+		warningTimer.Stop()
+		idleTimer.Stop()
+	}()
 
 	char, key, err := keyboard.GetKey()
 	return char, key, err

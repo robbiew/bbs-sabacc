@@ -44,24 +44,21 @@ const (
 	BG_WHITE   = "\x1b[47m"
 )
 
-// CP437 character constants (IBM PC character set)
-const (
-	// Box drawing characters (single line)
-	TOP_LEFT_CORNER     = "\xda" // ┌ (top-left corner)
-	TOP_RIGHT_CORNER    = "\xbf" // ┐ (top-right corner)
-	BOTTOM_LEFT_CORNER  = "\xc0" // └ (bottom-left corner)
-	BOTTOM_RIGHT_CORNER = "\xd9" // ┘ (bottom-right corner)
-	HORIZONTAL_LINE     = "\xc4" // ─ (horizontal line)
-	VERTICAL_LINE       = "\xb3" // │ (vertical line)
-	LEFT_T_JUNCTION     = "\xc3" // ├ (left T-junction)
+// Import UI package to access CP437 character constants
+// Note: We're using the same constants defined in ui.go to maintain consistency
 
-	// Box drawing characters (double line)
-	DOUBLE_TOP_LEFT_CORNER     = "\xc9" // ╔ (double top-left corner)
-	DOUBLE_TOP_RIGHT_CORNER    = "\xbb" // ╗ (double top-right corner)
-	DOUBLE_BOTTOM_LEFT_CORNER  = "\xc8" // ╚ (double bottom-left corner)
-	DOUBLE_BOTTOM_RIGHT_CORNER = "\xbc" // ╝ (double bottom-right corner)
-	DOUBLE_HORIZONTAL_LINE     = "\xcd" // ═ (double horizontal line)
-	DOUBLE_VERTICAL_LINE       = "\xba" // ║ (double vertical line)
+// Card suit symbols (CP437) - using proper printable characters
+const (
+	CP437_SPADE   = "\x06" // ♠ (spade) - keeping these for now but will use Unicode fallbacks
+	CP437_DIAMOND = "\x04" // ♦ (diamond)
+	CP437_CLUB    = "\x05" // ♣ (club)
+	CP437_HEART   = "\x03" // ♥ (heart)
+	CP437_STAR    = "\x0f" // ☼ (star/sun)
+
+	// Additional decorative characters (CP437)
+	CP437_UP_ARROW    = "\x18" // ↑ (up arrow)
+	CP437_SMILEY      = "\x01" // ☺ (smiley face)
+	CP437_SMILEY_FILL = "\x02" // ☻ (filled smiley face)
 
 	// Half-blocks for card shapes
 	TOP_HALF_BLOCK    = "\xdf" // ▀ (top half block)
@@ -75,24 +72,34 @@ const (
 	DARK_SHADE   = "\xb2" // ▓ (dark shade)
 	SOLID_BLOCK  = "\xdb" // █ (solid block)
 
-	// Card suit symbols (CP437) - using proper printable characters
-	CP437_SPADE   = "\x06" // ♠ (spade) - keeping these for now but will use Unicode fallbacks
-	CP437_DIAMOND = "\x04" // ♦ (diamond)
-	CP437_CLUB    = "\x05" // ♣ (club)
-	CP437_HEART   = "\x03" // ♥ (heart)
-	CP437_STAR    = "\x0f" // ☼ (star/sun)
-
-	// Additional decorative characters (CP437)
-	CP437_UP_ARROW    = "\x18" // ↑ (up arrow)
-	CP437_SMILEY      = "\x01" // ☺ (smiley face)
-	CP437_SMILEY_FILL = "\x02" // ☻ (filled smiley face)
-
 	// ANSI cursor control sequences
 	CURSOR_DOWN_LEFT_6 = "\x1b[1B\x1b[6D" // Move down 1 row, left 6 columns
 	CURSOR_DOWN_LEFT_7 = "\x1b[1B\x1b[7D" // Move down 1 row, left 7 columns
 	CURSOR_DOWN_LEFT_5 = "\x1b[1B\x1b[5D" // Move down 1 row, left 5 columns
 	CURSOR_SAVE        = "\x1b[s"         // Save cursor position
 	CURSOR_RESTORE     = "\x1b[u"         // Restore cursor position
+)
+
+// CP437 character constants (IBM PC character set)
+// These match the constants defined in ui.go for consistency
+const (
+	// Box drawing characters (single line)
+	HORIZONTAL_LINE     = "\xc4" // ─ (horizontal line)
+	VERTICAL_LINE       = "\xb3" // │ (vertical line)
+	TOP_LEFT_CORNER     = "\xda" // ┌ (top-left corner)
+	TOP_RIGHT_CORNER    = "\xbf" // ┐ (top-right corner)
+	BOTTOM_LEFT_CORNER  = "\xc0" // └ (bottom-left corner)
+	BOTTOM_RIGHT_CORNER = "\xd9" // ┘ (bottom-right corner)
+	LEFT_T_JUNCTION     = "\xc3" // ├ (left T-junction)
+	RIGHT_T_JUNCTION    = "\xb4" // ┤ (right T-junction)
+
+	// Box drawing characters (double line)
+	DOUBLE_HORIZONTAL_LINE     = "\xcd" // ═ (double horizontal line)
+	DOUBLE_VERTICAL_LINE       = "\xba" // ║ (double vertical line)
+	DOUBLE_TOP_LEFT_CORNER     = "\xc9" // ╔ (double top-left corner)
+	DOUBLE_TOP_RIGHT_CORNER    = "\xbb" // ╗ (double top-right corner)
+	DOUBLE_BOTTOM_LEFT_CORNER  = "\xc8" // ╚ (double bottom-left corner)
+	DOUBLE_BOTTOM_RIGHT_CORNER = "\xbc" // ╝ (double bottom-right corner)
 )
 
 type CardDefinition struct {
