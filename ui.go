@@ -3,7 +3,6 @@ package main
 import (
 	_ "embed"
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -37,8 +36,8 @@ type ScreenLayout struct {
 	AIPlayer4Y int
 
 	// Central game log area
-	GameLogX int // Center area for scrolling messages
-	GameLogY int
+	GameLogX int // Center area for scrolling messages - X pos
+	GameLogY int // Center area for scrolling messages - Y pos
 	GameLogW int // Width of game log area
 	GameLogH int // Height of game log area
 
@@ -51,9 +50,13 @@ type ScreenLayout struct {
 	TurnIndicatorX int
 	TurnIndicatorY int
 
-	// Pot info area
+	// Pot info area  
 	PotInfoX int
 	PotInfoY int
+
+	// Status bar area (Round/Deck display)
+	StatusBarX int
+	StatusBarY int
 
 	// Bottom status and menu
 	StatusY int // Bottom status line (pots, credits)
@@ -91,12 +94,6 @@ type MenuOption struct {
 	Enabled     bool
 }
 
-// Add a helper to strip ANSI escape codes
-var ansiRegexp = regexp.MustCompile(`\x1b\[[0-9;]*m`)
-
-func stripANSI(s string) string {
-	return ansiRegexp.ReplaceAllString(s, "")
-}
 
 // NewScreenLayout creates a new screen layout for fixed 79x24 dimensions
 func NewScreenLayout(termW, termH int) *ScreenLayout {
@@ -122,24 +119,28 @@ func NewScreenLayout(termW, termH int) *ScreenLayout {
 		GameLogX: 28,
 		GameLogY: 5,
 		GameLogW: 25, // Fixed width to match reference file
-		GameLogH: 8,  
+		GameLogH: 7,  
 
 		// Human player area (bottom center - fixed for 79x24)
 		HumanPlayerX: fixedW/2 - 15,
 		HumanPlayerY: 17, // Move higher to give space for cards above menu
 		HumanNameY:   15,
 
-		// Turn indicator (above game log)
+		// Turn indicator (below game log)
 		TurnIndicatorX: 4,
 		TurnIndicatorY: 19,
 
-		// Pot info area (bottom right)
-		PotInfoX: fixedW - 15,
+		// Pot info area 
+		PotInfoX: 2,
 		PotInfoY: 18,
+
+		// Status bar area (left side - Round/Deck display)
+		StatusBarX: 2,
+		StatusBarY: 21,
 
 		// Status and Menu UI elements
 		StatusY: 13, 
-		MenuY:   24, 
+		MenuY:   24,
 
 		// Card and face display settings
 		CardWidth:   6,                 // card width (matches card database)
@@ -152,9 +153,9 @@ func NewScreenLayout(termW, termH int) *ScreenLayout {
 	// Initialize game log with proper dimensions
 	layout.GameLog = &GameLog{
 		Messages: make([]string, 0),
-		MaxLines: layout.GameLogH - 2, // Account for borders
+		MaxLines: layout.GameLogH+2, 
 		StartY:   layout.GameLogY + 2, // Inside border
-		Width:    layout.GameLogW - 2, // Inside border with padding
+		Width:    layout.GameLogW+4, // Inside border with padding
 	}
 
 	// Initialize portrait manager for external ANSI art
@@ -177,9 +178,6 @@ func (sl *ScreenLayout) InitializeScreen() {
 
 	// Draw central game log with blue border
 	sl.drawGameLogBorder()
-
-	// Draw human player area
-	sl.drawHumanPlayerArea()
 
 	// Initialize game log
 	sl.GameLog.Clear()
@@ -460,12 +458,12 @@ func (sl *ScreenLayout) drawAIPlayerAreas() {
 	}
 }
 
-// drawHumanPlayerArea draws the human player area at bottom center
-func (sl *ScreenLayout) drawHumanPlayerArea() {
-	// Draw player name area
-	MoveCursor(sl.HumanPlayerX, sl.HumanNameY)
-	fmt.Printf("%s[Player Area]%s", GreenHi, Reset)
-}
+// // drawHumanPlayerArea draws the human player area at bottom center
+// func (sl *ScreenLayout) drawHumanPlayerArea() {
+// 	// Draw player name area
+// 	MoveCursor(sl.HumanPlayerX, sl.HumanNameY)
+// 	fmt.Printf("%s[Player Area]%s", GreenHi, Reset)
+// }
 
 // drawSimpleFaceArt draws character faces using external portraits
 func (sl *ScreenLayout) drawSimpleFaceArt(x, y, playerIndex int) {
@@ -516,41 +514,16 @@ func (sl *ScreenLayout) drawTurnIndicator(currentPlayer string) {
 }
 
 func (sl *ScreenLayout) drawPotInfo(gamePot, sabaccPot, sidePot int) {
-	// Use struct's defined pot position coordinates
-	
-	// Clear the area first
-	for i := 0; i < 3; i++ {
-		MoveCursor(sl.PotInfoX, sl.PotInfoY+i)
-		fmt.Print(strings.Repeat(" ", 25)) // Clear wider area
-	}
-	
-	// Display pot information (right-aligned formatting)
-	MoveCursor(sl.PotInfoX, sl.PotInfoY)
-	fmt.Printf("  Game Pot: %d", gamePot)
-	MoveCursor(sl.PotInfoX, sl.PotInfoY+1)
-	fmt.Printf("Sabacc Pot: %d", sabaccPot)
-	MoveCursor(sl.PotInfoX, sl.PotInfoY+2)
-	fmt.Printf("  Side Pot: %d", sidePot)
+	// Use the new helper function with embedded positioning
+	potInfo := createPotInfo(sl, gamePot, sabaccPot, sidePot)
+	fmt.Print(potInfo)
 }
 
-// UpdateStatusLine updates the bottom status line with game info (CP437 style)
+// UpdateStatusLine updates the game info
 func (sl *ScreenLayout) UpdateStatusLine(round, handPot, sabaccPot, deckSize int) {
-	MoveCursor(1, sl.StatusY)
-	fmt.Print(EraseLine)
-
-	// Create status line with cyan background like in reference file (without pot info since it's displayed separately)
-	statusLeft := fmt.Sprintf("\x1b[36;46m     \x1b[0;30;46m \x1b[1;37mRound: \x1b[33m%d\x1b[36m \x1b[37m  Deck: \x1b[33m%d\x1b[37m \x1b[0;30;46m        \x1b[36;40m", round, deckSize)
-
-	fmt.Print(statusLeft)
-
-	// Fill rest of line to terminal width
-	statusLen := len(stripANSI(statusLeft))
-	if statusLen < sl.TerminalW {
-		remaining := sl.TerminalW - statusLen
-		fmt.Printf("\x1b[36;40m%s\x1b[37m", strings.Repeat(" ", remaining))
-	}
-
-	fmt.Print(Reset)
+	// Use the new helper function that embeds positioning in the string
+	statusBar := createStatusBar(sl, round, deckSize)
+	fmt.Print(statusBar)
 }
 
 // UpdatePlayerInfo updates a player's name, credits, and total for new layout
@@ -615,25 +588,29 @@ func (sl *ScreenLayout) UpdatePlayerInfo(playerIndex int, name string, credits, 
 func (sl *ScreenLayout) ClearPlayerArea(playerIndex int) {
 	switch playerIndex {
 	case 0: // Human player (bottom center)
-		for i := 0; i < sl.CardHeight+1; i++ {
+		for i := 0; i < sl.CardHeight+2; i++ { // Clear extra line for asterisks
 			MoveCursor(sl.HumanPlayerX, sl.HumanPlayerY+i)
 			fmt.Print(EraseLine)
 		}
-	case 1, 2, 3, 4: // AI players (corners)
+	case 1, 2, 3, 4: // AI players - clear card areas next to portraits under names
 		var x, y int
 		switch playerIndex {
-		case 1:
-			x, y = sl.AIPlayer1X, 8
-		case 2:
-			x, y = sl.AIPlayer2X, 8
-		case 3:
-			x, y = sl.AIPlayer3X, sl.AIPlayer3Y+sl.FaceHeight+1
-		case 4:
-			x, y = sl.AIPlayer4X, sl.AIPlayer4Y+sl.FaceHeight+1
+		case 1: // AI 1 - Top-left, cards next to portrait under name
+			x, y = sl.AIPlayer1X+portraitWidth+1, sl.AIPlayer1Y+1
+		case 2: // AI 2 - Top-right, cards left of portrait under name  
+			x, y = sl.AIPlayer2X-16, sl.AIPlayer2Y+1
+		case 3: // AI 3 - Bottom-left, cards next to portrait under name
+			x, y = sl.AIPlayer3X+portraitWidth+1, sl.AIPlayer3Y+1
+		case 4: // AI 4 - Bottom-right, cards left of portrait under name
+			x, y = sl.AIPlayer4X-16, sl.AIPlayer4Y+1
 		}
-		// Clear AI card area
+		// Clear AI card area with proper width for card display (max 15 columns)
 		MoveCursor(x, y)
-		fmt.Print(strings.Repeat(" ", sl.FaceWidth))
+		fmt.Print(strings.Repeat(" ", 15)) // Clear card display line
+		MoveCursor(x, y+1) // Clear asterisk line
+		fmt.Print(strings.Repeat(" ", 15))
+		MoveCursor(x, y+2) // Clear static field values line
+		fmt.Print(strings.Repeat(" ", 15))
 	}
 }
 
@@ -733,52 +710,71 @@ func (sl *ScreenLayout) RefreshGameLog() {
 }
 
 // RenderPlayerCards renders cards for a player
-func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticField []Card, faceDown bool, renderer *CardRenderer) {
+func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticField []Card, faceDown bool, renderer *CardRenderer, round, deckSize, handPot, sabaccPot int) {
 	var x, y int
 
 	switch playerIndex {
 	case 0: // Human player
 		x, y = sl.HumanPlayerX, sl.HumanPlayerY
-	case 1: // AI 1 - Top-left, cards at bottom of corner area
-		x, y = sl.AIPlayer1X, 8
-	case 2: // AI 2 - Top-right, cards at bottom of corner area
-		x, y = sl.AIPlayer2X, 8
-	case 3: // AI 3 - Bottom-left, cards at bottom of corner area
-		x, y = sl.AIPlayer3X, sl.AIPlayer3Y+sl.FaceHeight+1
-	case 4: // AI 4 - Bottom-right, cards at bottom of corner area
-		x, y = sl.AIPlayer4X, sl.AIPlayer4Y+sl.FaceHeight+1
+	case 1: // AI 1 - Top-left, cards next to portrait under name
+		x, y = sl.AIPlayer1X+portraitWidth+1, sl.AIPlayer1Y+1
+	case 2: // AI 2 - Top-right, cards left of portrait under name  
+		x, y = sl.AIPlayer2X-16, sl.AIPlayer2Y+1
+	case 3: // AI 3 - Bottom-left, cards next to portrait under name
+		x, y = sl.AIPlayer3X+portraitWidth+1, sl.AIPlayer3Y+1
+	case 4: // AI 4 - Bottom-right, cards left of portrait under name
+		x, y = sl.AIPlayer4X-16, sl.AIPlayer4Y+1
 	default:
 		return
 	}
 
 	// Clear the card area first
 	sl.ClearPlayerArea(playerIndex)
+	
+	// Redraw status bar and pot info after clearing human player area (since they get wiped out)
+	if playerIndex == 0 {
+		sl.UpdateStatusLine(round, 0, 0, deckSize) // Use 0 for pots since this is just for Round/Deck display
+		sl.drawPotInfo(handPot, sabaccPot, 0) // Redraw pot info with actual values
+	}
 
 	// Render cards
 	for i, card := range cards {
+		// More robust check for static field cards
 		isStatic := false
 		for _, staticCard := range staticField {
-			if card == staticCard {
+			if card.Value == staticCard.Value && card.Suit == staticCard.Suit && card.Name == staticCard.Name {
 				isStatic = true
 				break
 			}
 		}
 
+
 		if faceDown {
-			// Show face-down AI cards as colored suit blocks (like reference image)
+			// Show face-down AI cards as solid colored blocks to hide values from human player
 			if playerIndex > 0 { // AI players
 				suitColor := getSuitColorForAI(card)
-				valueStr := getCardValueDisplay(card)
 
-				// Position each card with proper spacing (one space between cards)
-				cardX := x + (i * (len(valueStr) + 1))
+				// Position each card with proper spacing (2 characters per card: block + space)
+				cardX := x + (i * 2)
 				MoveCursor(cardX, y)
-				fmt.Printf("%s%s%s", suitColor, valueStr, Reset)
+				fmt.Printf("%s%s%s", suitColor, SOLID_BLOCK, Reset) // Use solid block to hide card value
+				
+				// Add yellow asterisk under static field cards for AI players
+				if isStatic {
+					MoveCursor(cardX, y+1)
+					fmt.Printf("%s*%s", Yellow, Reset)
+				}
 			} else {
 				// Human player face-down cards
 				cardX := x + (i * 4) // Keep original spacing for human cards
 				MoveCursor(cardX, y)
 				fmt.Printf("%s%s%s%s", Yellow, SOLID_BLOCK, SOLID_BLOCK, Reset)
+				
+				// Add yellow asterisk under static field cards for human player
+				if isStatic {
+					MoveCursor(cardX+1, y+sl.CardHeight)
+					fmt.Printf("%s*%s", Yellow, Reset)
+				}
 			}
 		} else {
 			// Show actual card for human player
@@ -788,7 +784,7 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticF
 				sl.renderCardAtPosition(cardX, y, card, renderer)
 				if isStatic {
 					MoveCursor(cardX+2, y+sl.CardHeight)
-					fmt.Print("*")
+					fmt.Printf("%s*%s", Yellow, Reset)
 				}
 			} else {
 				// Fallback text representation
@@ -797,49 +793,35 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticF
 				fmt.Printf("[%s]", card.String())
 				if isStatic {
 					MoveCursor(cardX+1, y+1)
-					fmt.Print("*")
+					fmt.Printf("%s*%s", Yellow, Reset)
 				}
 			}
 		}
 	}
 
-	// Render AI static field card values
+	// Render AI static field card values with proper spacing and +/- indicators
 	if playerIndex > 0 {
 		for i, card := range staticField {
-			cardX := x + (i * 4)
-			MoveCursor(cardX, y+1)
-			fmt.Printf("%s%d%s", Yellow, card.Value, Reset)
+			cardX := x + (i * 2) // Match the 2-character spacing used for AI cards
+			MoveCursor(cardX, y+2) // Position below the asterisk
+			
+			// Display value with +/- indicator
+			if card.Value > 0 {
+				fmt.Printf("%s+%d%s", Yellow, card.Value, Reset)
+			} else if card.Value < 0 {
+				fmt.Printf("%s%d%s", Yellow, card.Value, Reset) // Negative already has - sign
+			} else {
+				fmt.Printf("%s0%s", Yellow, Reset)
+			}
 		}
 	}
 }
 
-// RenderStaticField renders the static field cards
+// RenderStaticField is no longer needed since asterisks under player cards indicate static field
 func (sl *ScreenLayout) RenderStaticField(cards []Card, renderer *CardRenderer) {
-	// Position static field below human player cards
-	staticY := sl.HumanPlayerY + sl.CardHeight + 2
-
-	// Clear static field area
-	MoveCursor(sl.HumanPlayerX, staticY-1)
-	fmt.Print(EraseLine)
-	fmt.Printf("%sStatic Field:%s", Cyan, Reset)
-
-	for i := 0; i < 2; i++ { // Clear 2 lines for static field
-		MoveCursor(sl.HumanPlayerX, staticY+i)
-		fmt.Print(EraseLine)
-	}
-
-	// Render static field cards
-	for i, card := range cards {
-		cardX := sl.HumanPlayerX + (i * (sl.CardWidth + 1))
-		if renderer != nil {
-			MoveCursor(cardX, staticY)
-			renderer.RenderCard(card)
-		} else {
-			// Fallback text representation
-			MoveCursor(cardX, staticY)
-			fmt.Printf("[%s]", card.String())
-		}
-	}
+	// Static field indication is now handled by yellow asterisks under player cards
+	// This function is kept for compatibility but does nothing
+	// The asterisks in RenderPlayerCards show which cards are in static field (visible to AI)
 }
 
 // GameLog methods
@@ -886,22 +868,26 @@ func (gl *GameLog) Clear() {
 func getSuitColorForAI(card Card) string {
 	switch card.Suit {
 	case "Sabers", "Flasks":
-		return "\x1b[32;42m" // Green background for Sabers and Flasks
+		return Green // Green foreground for Sabers and Flasks
 	case "Coins", "Staves":
-		return "\x1b[33;43m" // Brown/Yellow background for Coins and Staves
+		return Yellow // Yellow foreground for Coins and Staves
 	case "Arcana":
-		return "\x1b[31;41m" // Red background for Arcana cards
+		return Red // Red foreground for Arcana cards
 	default:
-		return "\x1b[37;47m" // White background for unknown suits
+		return White // White foreground for unknown suits
 	}
 }
 
-// getCardValueDisplay returns a short display value for AI cards
+// getCardValueDisplay returns a single character display for AI cards to avoid width issues
 func getCardValueDisplay(card Card) string {
-	if card.Value > 0 {
-		return fmt.Sprintf("%d", card.Value)
-	} else if card.Value < 0 {
-		return fmt.Sprintf("%d", card.Value) // Show negative values
+	if card.Value > 9 {
+		return "+" // Use + for values > 9
+	} else if card.Value > 0 && card.Value <= 9 {
+		return fmt.Sprintf("%d", card.Value) // Single digit only
+	} else if card.Value < -9 {
+		return "-" // Use - for values < -9
+	} else if card.Value < 0 && card.Value >= -9 {
+		return fmt.Sprintf("%d", card.Value)[1:] // Remove negative sign, single digit only
 	}
 	return "0"
 }
@@ -928,5 +914,3 @@ func (sl *ScreenLayout) renderCardAtPosition(x, y int, card Card, renderer *Card
 		fmt.Print(line)
 	}
 }
-
-

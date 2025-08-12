@@ -611,12 +611,46 @@ func NewDeck() Deck {
 	return Deck{Cards: cards}
 }
 
-// Shuffle randomizes the deck
+// Shuffle randomizes the deck using modern best practices
 func (d *Deck) Shuffle() {
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(d.Cards), func(i, j int) {
+	// Early return for empty or single-card decks
+	if len(d.Cards) <= 1 {
+		return
+	}
+	
+	// Create a new random generator with time-based seed
+	// This avoids the deprecated global rand.Seed() pattern
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	
+	// Use the built-in Fisher-Yates shuffle algorithm
+	r.Shuffle(len(d.Cards), func(i, j int) {
 		d.Cards[i], d.Cards[j] = d.Cards[j], d.Cards[i]
 	})
+}
+
+// ShuffleWithSource allows using a custom random source for testing
+func (d *Deck) ShuffleWithSource(source rand.Source) {
+	if len(d.Cards) <= 1 {
+		return
+	}
+	
+	r := rand.New(source)
+	r.Shuffle(len(d.Cards), func(i, j int) {
+		d.Cards[i], d.Cards[j] = d.Cards[j], d.Cards[i]
+	})
+}
+
+// ShuffleMultiple performs multiple shuffles for extra randomness
+func (d *Deck) ShuffleMultiple(times int) {
+	if times < 1 {
+		times = 1
+	}
+	
+	for i := 0; i < times; i++ {
+		d.Shuffle()
+		// Small delay to ensure different seeds
+		time.Sleep(1 * time.Nanosecond)
+	}
 }
 
 // Deal removes and returns the top card from the deck
@@ -740,15 +774,14 @@ func handleTradeCard() {
 }
 
 func handleStaticField() {
-	ClearScreen()
-	fmt.Print(CyanHi + strings.Repeat("\xcd", 43) + "\n" + Reset)
-	fmt.Print(CyanHi + "             STATIC FIELD\n" + Reset)
-	fmt.Print(CyanHi + strings.Repeat("\xcd", 43) + "\n\n" + Reset)
+	// Use the new UI system for static field management
+	staticOptions := []MenuOption{
+		{'1', "Place card in Static Field", true},
+		{'2', "Remove card from Static Field", true},
+		{'0', "Cancel", true},
+	}
 
-	fmt.Printf("%s[1]%s Place card in Static Field\n", Green, Reset)
-	fmt.Printf("%s[2]%s Remove card from Static Field\n", Green, Reset)
-	fmt.Printf("%s[0]%s Cancel\n\n", Red, Reset)
-	fmt.Print(Green + "Choice: " + Reset)
+	game.Layout.ShowMenu("Static Field Management", staticOptions, "Static choice: ")
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
@@ -769,21 +802,24 @@ func placeInStaticField() {
 	player := &game.Players[0]
 
 	if len(player.Hand) == 0 {
-		fmt.Printf("\n%sNo cards in hand!%s\n", Red, Reset)
+		game.Layout.LogMessage("No cards in hand!", "error")
+		game.Layout.DisplayMessage("No cards in hand!", "error", 0)
 		time.Sleep(1 * time.Second)
 		return
 	}
 
-	fmt.Printf("\n%sSelect a card to place in Static Field:%s\n\n", Yellow, Reset)
-
+	// Create menu options for each card in hand
+	var cardOptions []MenuOption
 	for i, card := range player.Hand {
-		fmt.Printf("%s[%d]%s %s[%s]%s\n",
-			Green, i+1, Reset,
-			getCardColor(card), card.String(), Reset)
+		cardOptions = append(cardOptions, MenuOption{
+			Key:         rune('1' + i),
+			Description: fmt.Sprintf("Place [%s] in Static Field", card.String()),
+			Enabled:     true,
+		})
 	}
+	cardOptions = append(cardOptions, MenuOption{'0', "Cancel", true})
 
-	fmt.Printf("\n%s[0] Cancel%s\n\n", Red, Reset)
-	fmt.Print(Green + "Choice: " + Reset)
+	game.Layout.ShowMenu("Place Card in Static Field", cardOptions, "Card choice: ")
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
@@ -796,40 +832,56 @@ func placeInStaticField() {
 	}
 
 	if choice < 1 || choice > len(player.Hand) {
-		fmt.Printf("\n%sInvalid choice!%s\n", Red, Reset)
+		game.Layout.DisplayMessage("Invalid choice!", "error", 0)
 		time.Sleep(1 * time.Second)
 		return
 	}
 
-	// Move card to static field
+	// Mark card as protected in static field (card stays in hand)
 	card := player.Hand[choice-1]
-	player.Hand = append(player.Hand[:choice-1], player.Hand[choice:]...)
-	player.StaticField = append(player.StaticField, card)
+	// Check if card is already in static field
+	alreadyStatic := false
+	for _, staticCard := range player.StaticField {
+		if card.Value == staticCard.Value && card.Suit == staticCard.Suit && card.Name == staticCard.Name {
+			alreadyStatic = true
+			break
+		}
+	}
+	
+	if !alreadyStatic {
+		player.StaticField = append(player.StaticField, card) // Add to static field (card remains in hand)
+	}
 
-	fmt.Printf("\n%s%s[%s]%s placed in Static Field (protected from shifts)%s\n",
-		Green, getCardColor(card), card.String(), Reset, Reset)
+	game.Layout.LogMessage(fmt.Sprintf("Placed [%s] in Static Field (protected from shifts)", card.String()), "success")
+	game.Layout.DisplayMessage(fmt.Sprintf("Placed [%s] in Static Field", card.String()), "success", 0)
 	time.Sleep(2 * time.Second)
+
+	// Refresh the game display to show updated static field
+	displayGameScreen()
 }
 
 func removeFromStaticField() {
 	player := &game.Players[0]
 
 	if len(player.StaticField) == 0 {
-		fmt.Printf("\n%sNo cards in Static Field!%s\n", Red, Reset)
+		game.Layout.LogMessage("No cards in Static Field!", "error")
+		game.Layout.DisplayMessage("No cards in Static Field!", "error", 0)
 		time.Sleep(1 * time.Second)
 		return
 	}
 
-	fmt.Printf("\n%sSelect a card to remove from Static Field:%s\n\n", Yellow, Reset)
-
+	// Create menu options for each card in static field
+	var cardOptions []MenuOption
 	for i, card := range player.StaticField {
-		fmt.Printf("%s[%d]%s %s[%s]%s\n",
-			Green, i+1, Reset,
-			getCardColor(card), card.String(), Reset)
+		cardOptions = append(cardOptions, MenuOption{
+			Key:         rune('1' + i),
+			Description: fmt.Sprintf("Remove [%s] from Static Field", card.String()),
+			Enabled:     true,
+		})
 	}
+	cardOptions = append(cardOptions, MenuOption{'0', "Cancel", true})
 
-	fmt.Printf("\n%s[0] Cancel%s\n\n", Red, Reset)
-	fmt.Print(Green + "Choice: " + Reset)
+	game.Layout.ShowMenu("Remove Card from Static Field", cardOptions, "Card choice: ")
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
@@ -842,17 +894,20 @@ func removeFromStaticField() {
 	}
 
 	if choice < 1 || choice > len(player.StaticField) {
-		fmt.Printf("\n%sInvalid choice!%s\n", Red, Reset)
+		game.Layout.DisplayMessage("Invalid choice!", "error", 0)
 		time.Sleep(1 * time.Second)
 		return
 	}
 
-	// Move card back to hand
+	// Remove card from static field (card stays in hand)
 	card := player.StaticField[choice-1]
 	player.StaticField = append(player.StaticField[:choice-1], player.StaticField[choice:]...)
-	player.Hand = append(player.Hand, card)
+	// Card remains in hand - it was never removed
 
-	fmt.Printf("\n%s%s[%s]%s returned to hand%s\n",
-		Green, getCardColor(card), card.String(), Reset, Reset)
+	game.Layout.LogMessage(fmt.Sprintf("[%s] returned to hand", card.String()), "success")
+	game.Layout.DisplayMessage(fmt.Sprintf("[%s] returned to hand", card.String()), "success", 0)
 	time.Sleep(2 * time.Second)
+
+	// Refresh the game display to show updated static field
+	displayGameScreen()
 }

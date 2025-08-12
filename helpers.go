@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +12,13 @@ import (
 
 	"github.com/eiannone/keyboard"
 )
+
+// Add a helper to strip ANSI escape codes
+var ansiRegexp = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func stripANSI(s string) string {
+	return ansiRegexp.ReplaceAllString(s, "")
+}
 
 // ANSI Color Constants (replacing godoors colors)
 const (
@@ -31,6 +39,29 @@ const (
 	CyanHi    = "\x1b[96m"
 	WhiteHi   = "\x1b[97m"
 	EraseLine = "\x1b[2K"
+
+	// Background colors
+	BgBlack   = "\x1b[40m"
+	BgRed     = "\x1b[41m"
+	BgGreen   = "\x1b[42m"
+	BgYellow  = "\x1b[43m"
+	BgBlue    = "\x1b[44m"
+	BgMagenta = "\x1b[45m"
+	BgCyan    = "\x1b[46m"
+	BgWhite   = "\x1b[47m"
+
+	// Text formatting
+	Bold      = "\x1b[1m"
+	Dim       = "\x1b[2m"
+	Underline = "\x1b[4m"
+
+	// Combined colors for common UI elements
+	StatusBarBg          = "\x1b[36;46m"      // Cyan foreground on cyan background
+	StatusBarText        = "\x1b[0;30;46m"    // Black text on cyan background
+	StatusBarBoldWhite   = "\x1b[1;37m"       // Bold white text
+	StatusBarHighlight   = "\x1b[33m"         // Yellow highlight
+	StatusBarNormal      = "\x1b[37m"         // Normal white text
+	StatusBarTransition  = "\x1b[36;40m"      // Cyan on black (transition)
 )
 
 // User represents a BBS user (replacing godoors User)
@@ -56,7 +87,7 @@ type Timer struct {
 
 // Global variables (replacing godoors globals)
 var (
-	Idle       = 300 // Default idle timeout in seconds
+	Idle       = 60 // Default idle timeout in seconds
 	CurrentUser User
 	gameLayout *ScreenLayout // Reference to game layout for timeout warnings
 )
@@ -365,4 +396,71 @@ func PrintAnsiLoc(artfile string, x int, y int) {
 		fmt.Fprintf(os.Stdout, Esc+strconv.Itoa(yLoc)+";"+strconv.Itoa(x)+"f"+s.Text())
 		yLoc++
 	}
+}
+
+// createStatusBar creates a formatted status bar with embedded positioning using layout coordinates
+func createStatusBar(sl *ScreenLayout, round, deckSize int) string {
+	var sb strings.Builder
+	
+	// Set color and position for "Round:" label - use layout coordinates
+	sb.WriteString(Cyan)
+	sb.WriteString(fmt.Sprintf("\x1b[%d;%dH", sl.StatusBarY, sl.StatusBarX))
+	sb.WriteString("Round: ")
+	
+	// Yellow for the round number
+	sb.WriteString(Yellow)
+	sb.WriteString(strconv.Itoa(round))
+
+	// Set color and position for "Deck:" label
+	sb.WriteString(Cyan)
+	sb.WriteString(fmt.Sprintf("\x1b[%d;%dH", sl.StatusBarY+1, sl.StatusBarX))
+	sb.WriteString("Deck: ")
+	
+	// Yellow for deck size
+	sb.WriteString(Yellow)
+	sb.WriteString(strconv.Itoa(deckSize))
+	sb.WriteString(" ")
+	
+	// Reset colors
+	sb.WriteString(Reset)
+		
+	return sb.String()
+}
+
+// createPotInfo creates a formatted pot info display with embedded positioning using layout coordinates
+func createPotInfo(sl *ScreenLayout, gamePot, sabaccPot, sidePot int) string {
+	var sb strings.Builder
+	
+	// Set color and position for "Game Pot:" label - use layout coordinates
+	sb.WriteString(White)
+	sb.WriteString(fmt.Sprintf("\x1b[%d;%dH", sl.PotInfoY, sl.PotInfoX))
+	sb.WriteString("Game Pot: ")
+	
+	// Yellow for the game pot value
+	sb.WriteString(Yellow)
+	sb.WriteString(strconv.Itoa(gamePot))
+
+	// Set color and position for "Sabacc Pot:" label
+	sb.WriteString(White)
+	sb.WriteString(fmt.Sprintf("\x1b[%d;%dH", sl.PotInfoY+1, sl.PotInfoX))
+	sb.WriteString("Sabacc Pot: ")
+	
+	// Yellow for sabacc pot value
+	sb.WriteString(Yellow)
+	sb.WriteString(strconv.Itoa(sabaccPot))
+
+	// Set color and position for "Side Pot:" label
+	sb.WriteString(White)
+	sb.WriteString(fmt.Sprintf("\x1b[%d;%dH", sl.PotInfoY+2, sl.PotInfoX))
+	sb.WriteString("Side Pot: ")
+	
+	// Yellow for side pot value
+	sb.WriteString(Yellow)
+	sb.WriteString(strconv.Itoa(sidePot))
+	sb.WriteString(" ")
+	
+	// Reset colors
+	sb.WriteString(Reset)
+		
+	return sb.String()
 }

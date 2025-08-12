@@ -42,7 +42,7 @@ type SabaccGame struct {
 	MinRounds     int           // Minimum rounds before calling allowed
 	BettingPhase  bool          // True during betting, false during play
 	ShiftOccurred bool          // Track if shift happened this turn
-	Layout        *ScreenLayout // New persistent UI system
+	Layout        *ScreenLayout // Persistent UI system
 }
 
 // Player represents a player in the game
@@ -350,7 +350,7 @@ func handlePlayerBetting() bool {
 		{'F', "Fold (1 credit penalty)", true},
 	}
 
-	game.Layout.ShowMenu("Betting Phase", bettingOptions, "Betting choice: ")
+	game.Layout.ShowMenu("Betting Phase", bettingOptions, "Betting: ")
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
@@ -537,11 +537,22 @@ func handleComputerBetting(playerIndex int) bool {
 		return false
 	}
 
-	// Strong hands (20-23): Raise or call aggressively
-	if total >= 20 && total <= 23 {
+	// Adjust betting thresholds based on round - more conservative early, aggressive later
+	earlyRound := game.Round <= 2
+	
+	// Strong hands (18+ early rounds, 20+ later rounds): Raise or call aggressively
+	strongThreshold := 18
+	if !earlyRound {
+		strongThreshold = 20
+	}
+	
+	if total >= strongThreshold && total <= 23 {
 		if game.CurrentBet == 0 {
 			// Raise with strong hand
-			raiseAmount := 10
+			raiseAmount := 5 // Smaller initial raises to keep players in
+			if !earlyRound {
+				raiseAmount = 10
+			}
 			if computer.Credits >= raiseAmount {
 				computer.Credits -= raiseAmount
 				game.HandPot += raiseAmount
@@ -565,9 +576,14 @@ func handleComputerBetting(playerIndex int) bool {
 				return false
 			}
 		}
-	} else if total >= 15 && total <= 19 {
-		// Medium hands: Call small bets, fold large ones
-		if game.CurrentBet <= 5 {
+	} else if total >= 10 && total < strongThreshold {
+		// Medium hands: More liberal calling in early rounds
+		maxCallAmount := 10
+		if earlyRound {
+			maxCallAmount = 15 // More willing to call early
+		}
+		
+		if game.CurrentBet <= maxCallAmount {
 			if computer.Credits >= game.CurrentBet {
 				computer.Credits -= game.CurrentBet
 				game.HandPot += game.CurrentBet
@@ -583,12 +599,37 @@ func handleComputerBetting(playerIndex int) bool {
 			game.Layout.LogMessage(computer.Name+" folds (bet too high)", "important")
 			return false
 		}
+	} else if total >= 5 && total < 10 {
+		// Marginal hands: Very conservative, but don't auto-fold in early rounds
+		if game.CurrentBet == 0 {
+			game.Layout.LogMessage(computer.Name+" checks", "action")
+		} else if game.CurrentBet <= 5 && earlyRound {
+			// Willing to call small bets early with marginal hands
+			if computer.Credits >= game.CurrentBet {
+				computer.Credits -= game.CurrentBet
+				game.HandPot += game.CurrentBet
+				game.Layout.LogMessage(computer.Name+" calls "+fmt.Sprintf("%d", game.CurrentBet)+" credits", "action")
+			} else {
+				computer.Folded = true
+				computer.Credits -= 1
+				game.SabaccPot += 1
+				game.Layout.LogMessage(computer.Name+" folds (insufficient credits)", "important")
+				return false
+			}
+		} else {
+			// Fold to any bet with marginal hand in later rounds
+			computer.Folded = true
+			computer.Credits -= 1
+			game.SabaccPot += 1
+			game.Layout.LogMessage(computer.Name+" folds (marginal hand)", "important")
+			return false
+		}
 	} else {
-		// Weak hands: Check/fold
+		// Weak hands (< 5): Check/fold
 		if game.CurrentBet == 0 {
 			game.Layout.LogMessage(computer.Name+" checks", "action")
 		} else {
-			// Any bet with weak hand - fold
+			// Fold to any bet with weak hand
 			computer.Folded = true
 			computer.Credits -= 1
 			game.SabaccPot += 1
@@ -881,7 +922,7 @@ func displayGameScreen() {
 		game.Layout.UpdatePlayerInfo(i, aiPlayer.Name, aiPlayer.Credits, 0, false)
 
 		// Render AI player's cards (as CP437 blocks)
-		game.Layout.RenderPlayerCards(i, aiPlayer.Hand, aiPlayer.StaticField, true, game.CardRenderer)
+		game.Layout.RenderPlayerCards(i, aiPlayer.Hand, aiPlayer.StaticField, true, game.CardRenderer, game.Round, len(game.Deck.Cards), game.HandPot, game.SabaccPot)
 	}
 
 	// Update human player (index 0)
@@ -895,11 +936,8 @@ func displayGameScreen() {
 
 		game.Layout.UpdatePlayerInfo(0, player.Name, player.Credits, total, true)
 
-		// Render player's cards (face up)
-		game.Layout.RenderPlayerCards(0, player.Hand, player.StaticField, false, game.CardRenderer)
-
-		// Render static field
-		game.Layout.RenderStaticField(player.StaticField, game.CardRenderer)
+		// Render player's cards (face up) with asterisks indicating static field cards
+		game.Layout.RenderPlayerCards(0, player.Hand, player.StaticField, false, game.CardRenderer, game.Round, len(game.Deck.Cards), game.HandPot, game.SabaccPot)
 	}
 }
 
@@ -959,31 +997,43 @@ func handleAIStaticField(playerIndex int) {
 		return
 	}
 
-	// Strategy 1: Protect valuable cards before shifts
-	valuableCards := findValuableCardsToProtect(computer.Hand, computer.StaticField)
-
-	for _, cardIndex := range valuableCards {
-		if cardIndex < len(computer.Hand) {
-			// Move valuable card to static field
-			card := computer.Hand[cardIndex]
-			computer.Hand = append(computer.Hand[:cardIndex], computer.Hand[cardIndex+1:]...)
-			computer.StaticField = append(computer.StaticField, card)
-
-			game.Layout.LogMessage(fmt.Sprintf("%s places a card in Static Field", computer.Name), "action")
-			break // Only move one card per turn
-		}
-	}
-
-	// Strategy 2: Remove cards from static field if hand composition changed
+	// Strategy 1: Check if we should remove cards from static field first (higher priority)
 	if len(computer.StaticField) > 0 {
 		shouldRemove := evaluateStaticFieldRemoval(computer.Hand, computer.StaticField)
 		if shouldRemove >= 0 {
-			// Move card back to hand
-			card := computer.StaticField[shouldRemove]
+			// Remove card from static field (card stays in hand)
 			computer.StaticField = append(computer.StaticField[:shouldRemove], computer.StaticField[shouldRemove+1:]...)
-			computer.Hand = append(computer.Hand, card)
+			// Card remains in hand - it was never removed
 
 			game.Layout.LogMessage(fmt.Sprintf("%s removes a card from Static Field", computer.Name), "action")
+			return // Only one static field action per turn
+		}
+	}
+
+	// Strategy 2: Only if we didn't remove a card, consider placing one
+	if len(computer.StaticField) < 2 { // Don't fill static field completely
+		valuableCards := findValuableCardsToProtect(computer.Hand, computer.StaticField)
+
+		for _, cardIndex := range valuableCards {
+			if cardIndex < len(computer.Hand) {
+				// Mark valuable card as protected in static field (card stays in hand)
+				card := computer.Hand[cardIndex]
+				
+				// Check if card is already in static field
+				alreadyStatic := false
+				for _, staticCard := range computer.StaticField {
+					if card.Value == staticCard.Value && card.Suit == staticCard.Suit && card.Name == staticCard.Name {
+						alreadyStatic = true
+						break
+					}
+				}
+				
+				if !alreadyStatic {
+					computer.StaticField = append(computer.StaticField, card) // Add to static field (card remains in hand)
+					game.Layout.LogMessage(fmt.Sprintf("%s places a card in Static Field", computer.Name), "action")
+					return // Only one static field action per turn
+				}
+			}
 		}
 	}
 }
