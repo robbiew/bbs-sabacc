@@ -11,6 +11,8 @@ var (
 	SabaccLogo string
 	//go:embed ansi/logBorder.ans
 	LogBorder string
+	//go:embed ansi/portraitBorder.ans
+	PortraitBorder string
 )
 const (
 	Esc = "\u001B["
@@ -486,11 +488,42 @@ func (sl *ScreenLayout) UpdateHeader(round, handPot, sabaccPot, deckSize int, cu
 	// Update turn indicator
 	sl.drawTurnIndicator(currentPlayer)
 
+	// Update AI player borders based on current turn
+	sl.updateAIPlayerBorders(currentPlayer)
+
 	// Update pot info
 	sl.drawPotInfo(handPot, sabaccPot, 0)
 
 	// Update bottom status line with pot information
 	sl.UpdateStatusLine(round, handPot, sabaccPot, deckSize)
+}
+
+// updateAIPlayerBorders manages the visual turn indicator borders around AI players
+func (sl *ScreenLayout) updateAIPlayerBorders(currentPlayer string) {
+	// Clear all existing borders first
+	sl.ClearAllAIPlayerBorders()
+	
+	// Show border for the current AI player
+	if currentPlayer != "Human" && currentPlayer != "" {
+		// Extract player name and map to player index
+		playerName := strings.Fields(currentPlayer)[0]
+		playerIndex := -1
+		
+		switch strings.ToUpper(playerName) {
+		case "PHOOJA":
+			playerIndex = 1
+		case "ASH-TAAC":
+			playerIndex = 2
+		case "OOLANGA":
+			playerIndex = 3
+		case "KY'ALA":
+			playerIndex = 4
+		}
+		
+		if playerIndex > 0 {
+			sl.ShowAIPlayerBorder(playerIndex)
+		}
+	}
 }
 
 func (sl *ScreenLayout) drawTurnIndicator(currentPlayer string) {
@@ -676,6 +709,74 @@ func (sl *ScreenLayout) ShowCompactMenu(options []MenuOption) {
 func (sl *ScreenLayout) ClearCompactMenu() {
 	MoveCursor(1, sl.MenuY)
 	fmt.Print(EraseLine)
+}
+
+// ShowAIPlayerBorder adds a bright green border above the active AI player's portrait
+func (sl *ScreenLayout) ShowAIPlayerBorder(playerIndex int) {
+	if playerIndex <= 0 || playerIndex > 4 {
+		return // Only for AI players (1-4)
+	}
+
+	var x, y int
+	switch playerIndex {
+	case 1: // Top-left (PHOOJA)
+		x, y = sl.AIPlayer1X, sl.AIPlayer1Y
+	case 2: // Top-right (ASH-TAAC)  
+		x, y = sl.AIPlayer2X, sl.AIPlayer2Y
+	case 3: // Bottom-left (OOLANGA)
+		x, y = sl.AIPlayer3X, sl.AIPlayer3Y
+	case 4: // Bottom-right (KY'ALA)
+		x, y = sl.AIPlayer4X, sl.AIPlayer4Y
+	default:
+		return
+	}
+
+	// Try to use ANSI file first, fallback to code-generated border
+	if PortraitBorder != "" {
+		// Use the embedded ANSI file (now just top border)
+		PrintAnsiLoc(PortraitBorder, x, y-1) // Position above portrait
+	} else {
+		// Code-generated bright green half-block border (top only)
+		borderWidth := portraitWidth // 9 characters wide to match portrait
+		
+		// Top border only (row above portrait)
+		MoveCursor(x, y-1)
+		fmt.Printf("%s%s%s", GreenHi, strings.Repeat(string(cp437BHB), borderWidth), Reset) // Bottom half blocks on top
+	}
+}
+
+// ClearAIPlayerBorder removes the border from an AI player's portrait
+func (sl *ScreenLayout) ClearAIPlayerBorder(playerIndex int) {
+	if playerIndex <= 0 || playerIndex > 4 {
+		return // Only for AI players (1-4)
+	}
+
+	var x, y int
+	switch playerIndex {
+	case 1: // Top-left (PHOOJA)
+		x, y = sl.AIPlayer1X, sl.AIPlayer1Y
+	case 2: // Top-right (ASH-TAAC)  
+		x, y = sl.AIPlayer2X, sl.AIPlayer2Y
+	case 3: // Bottom-left (OOLANGA)
+		x, y = sl.AIPlayer3X, sl.AIPlayer3Y
+	case 4: // Bottom-right (KY'ALA)
+		x, y = sl.AIPlayer4X, sl.AIPlayer4Y
+	default:
+		return
+	}
+
+	borderWidth := portraitWidth // 9 characters wide to match portrait
+	
+	// Clear top border only (row above portrait)
+	MoveCursor(x, y-1)
+	fmt.Print(strings.Repeat(" ", borderWidth))
+}
+
+// ClearAllAIPlayerBorders removes borders from all AI players
+func (sl *ScreenLayout) ClearAllAIPlayerBorders() {
+	for i := 1; i <= 4; i++ {
+		sl.ClearAIPlayerBorder(i)
+	}
 }
 
 
