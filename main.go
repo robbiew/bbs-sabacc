@@ -207,7 +207,7 @@ func startNewGame() {
 	time.Sleep(2 * time.Second)
 
 	// DEALING ROUND - Deal 2 cards to each player
-	game.Layout.LogMessage("Dealing 2 cards to each player", "info")
+	game.Layout.LogMessage("Dealing 2 cards.", "info")
 	for i := 0; i < 2; i++ {
 		for j := range game.Players {
 			if len(game.Deck.Cards) > 0 {
@@ -218,8 +218,8 @@ func startNewGame() {
 	}
 
 	// Show dealing completion message in game log
-	game.Layout.LogMessage("Cards dealt. Round 1 begins.", "info")
-	game.Layout.DisplayMessage("Cards dealt. Game begins...", "info", 0)
+	game.Layout.LogMessage("Round 1 begins.", "info")
+	game.Layout.DisplayMessage("Game begins...", "info", 0)
 	time.Sleep(2 * time.Second)
 
 	// Start game loop
@@ -246,7 +246,7 @@ func gameLoop() {
 		// If only one player left, they win immediately
 		if activePlayers <= 1 {
 			if lastActivePlayer >= 0 {
-				fmt.Printf("\r\n%s%s wins by default (others folded)!%s\r\n",
+				fmt.Printf("\r\n%s%s wins (others folded)!%s\r\n",
 					GreenHi, game.Players[lastActivePlayer].Name, Reset)
 				game.Players[lastActivePlayer].Credits += game.HandPot
 
@@ -343,10 +343,17 @@ func handlePlayerBetting() bool {
 	game.Layout.DisplayMessage("BETTING PHASE", "info", 0)
 	time.Sleep(1 * time.Second)
 
-	// Use the same menu system as player turn menu
+	// Create dynamic menu options based on current bet state
+	var checkCallLabel string
+	if game.CurrentBet > 0 {
+		checkCallLabel = fmt.Sprintf("Call %d credits", game.CurrentBet)
+	} else {
+		checkCallLabel = "Check"
+	}
+
 	bettingOptions := []MenuOption{
-		{'C', "Check/Call current bet", true},
-		{'R', "Raise bet", true},
+		{'C', checkCallLabel, true},
+		{'R', "Raise", true},
 		{'F', "Fold (1 credit penalty)", true},
 	}
 
@@ -388,8 +395,8 @@ func handlePlayerBetting() bool {
 			playerRef.Credits -= totalBet
 			game.HandPot += totalBet
 			game.CurrentBet = totalBet // Set new bet amount for other players
-			game.Layout.LogMessage(fmt.Sprintf("You raise to %d credits", totalBet), "action")
-			game.Layout.DisplayMessage(fmt.Sprintf("You raise to %d credits", totalBet), "success", 0)
+			game.Layout.LogMessage(fmt.Sprintf("You raise to %d", totalBet), "action")
+			game.Layout.DisplayMessage(fmt.Sprintf("You raise to %d", totalBet), "success", 0)
 		} else {
 			game.Layout.DisplayMessage("Not enough credits to raise!", "error", 0)
 			return false
@@ -420,9 +427,12 @@ func handlePlayerCall() bool {
 	game.Layout.DisplayMessage("CALL PHASE", "info", 0)
 	time.Sleep(1 * time.Second)
 
-	fmt.Print(Yellow + "[" + YellowHi + "C" + Yellow + "] " + White + "Call the hand (end game)\r\n" + Reset)
-	fmt.Print(Yellow + "[" + YellowHi + "N" + Yellow + "] " + White + "No call (continue)\r\n\r\n" + Reset)
-	fmt.Print(Green + "Call choice: " + Reset)
+	callOptions := []MenuOption{
+		{'C', "Call the hand (end game)", true},
+		{'N', "No call (continue)", true},
+	}
+
+	game.Layout.ShowMenu("Call Phase", callOptions, "Call choice: ")
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
@@ -557,7 +567,7 @@ func handleComputerBetting(playerIndex int) bool {
 				computer.Credits -= raiseAmount
 				game.HandPot += raiseAmount
 				game.CurrentBet = raiseAmount
-				game.Layout.LogMessage(computer.Name+" raises to "+fmt.Sprintf("%d", raiseAmount)+" credits", "action")
+				game.Layout.LogMessage(computer.Name+" raises "+fmt.Sprintf("%d", raiseAmount), "action")
 			} else {
 				game.Layout.LogMessage(computer.Name+" checks", "action")
 			}
@@ -566,7 +576,7 @@ func handleComputerBetting(playerIndex int) bool {
 			if computer.Credits >= game.CurrentBet {
 				computer.Credits -= game.CurrentBet
 				game.HandPot += game.CurrentBet
-				game.Layout.LogMessage(computer.Name+" calls "+fmt.Sprintf("%d", game.CurrentBet)+" credits", "action")
+				game.Layout.LogMessage(computer.Name+" calls "+fmt.Sprintf("%d", game.CurrentBet), "action")
 			} else {
 				// Can't afford to call - fold
 				computer.Folded = true
@@ -587,7 +597,7 @@ func handleComputerBetting(playerIndex int) bool {
 			if computer.Credits >= game.CurrentBet {
 				computer.Credits -= game.CurrentBet
 				game.HandPot += game.CurrentBet
-				game.Layout.LogMessage(computer.Name+" calls "+fmt.Sprintf("%d", game.CurrentBet)+" credits", "action")
+				game.Layout.LogMessage(computer.Name+" calls "+fmt.Sprintf("%d", game.CurrentBet), "action")
 			} else {
 				game.Layout.LogMessage(computer.Name+" checks", "action")
 			}
@@ -608,7 +618,7 @@ func handleComputerBetting(playerIndex int) bool {
 			if computer.Credits >= game.CurrentBet {
 				computer.Credits -= game.CurrentBet
 				game.HandPot += game.CurrentBet
-				game.Layout.LogMessage(computer.Name+" calls "+fmt.Sprintf("%d", game.CurrentBet)+" credits", "action")
+				game.Layout.LogMessage(computer.Name+" calls "+fmt.Sprintf("%d", game.CurrentBet), "action")
 			} else {
 				computer.Folded = true
 				computer.Credits -= 1
@@ -656,7 +666,7 @@ func handleComputerCall(playerIndex int) bool {
 		return true
 	}
 
-	game.Layout.LogMessage(computer.Name+" chooses not to call", "action")
+	game.Layout.LogMessage(computer.Name+" no call", "action")
 	time.Sleep(500 * time.Millisecond)
 	return false
 }
@@ -690,7 +700,7 @@ func handleComputerDraw(playerIndex int) {
 			computer.Hand = append(computer.Hand, card)
 			game.Layout.LogMessage(computer.Name+" draws a card", "action")
 		} else {
-			game.Layout.LogMessage(computer.Name+" stands (no cards left)", "action")
+			game.Layout.LogMessage(computer.Name+" stands (no cards)", "action")
 		}
 	} else if total < 5 && total > -15 {
 		// Poor hand - aggressive improvement needed
@@ -1030,7 +1040,7 @@ func handleAIStaticField(playerIndex int) {
 				
 				if !alreadyStatic {
 					computer.StaticField = append(computer.StaticField, card) // Add to static field (card remains in hand)
-					game.Layout.LogMessage(fmt.Sprintf("%s places a card in Static Field", computer.Name), "action")
+					game.Layout.LogMessage(fmt.Sprintf("%s uses Static Field", computer.Name), "action")
 					return // Only one static field action per turn
 				}
 			}

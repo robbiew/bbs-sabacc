@@ -808,18 +808,21 @@ func placeInStaticField() {
 		return
 	}
 
+	// Clear the previous menu before showing the new one
+	game.Layout.ClearMenuArea()
+
 	// Create menu options for each card in hand
 	var cardOptions []MenuOption
 	for i, card := range player.Hand {
 		cardOptions = append(cardOptions, MenuOption{
 			Key:         rune('1' + i),
-			Description: fmt.Sprintf("Place [%s] in Static Field", card.String()),
+			Description: fmt.Sprintf("Place [%s]", card.String()),
 			Enabled:     true,
 		})
 	}
 	cardOptions = append(cardOptions, MenuOption{'0', "Cancel", true})
 
-	game.Layout.ShowMenu("Place Card in Static Field", cardOptions, "Card choice: ")
+	game.Layout.ShowMenu("Place in Static Field", cardOptions, "Card choice: ")
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
@@ -870,18 +873,21 @@ func removeFromStaticField() {
 		return
 	}
 
+	// Clear the previous menu before showing the new one
+	game.Layout.ClearMenuArea()
+
 	// Create menu options for each card in static field
 	var cardOptions []MenuOption
 	for i, card := range player.StaticField {
 		cardOptions = append(cardOptions, MenuOption{
 			Key:         rune('1' + i),
-			Description: fmt.Sprintf("Remove [%s] from Static Field", card.String()),
+			Description: fmt.Sprintf("Remove [%s]", card.String()),
 			Enabled:     true,
 		})
 	}
 	cardOptions = append(cardOptions, MenuOption{'0', "Cancel", true})
 
-	game.Layout.ShowMenu("Remove Card from Static Field", cardOptions, "Card choice: ")
+	game.Layout.ShowMenu("Remove from Static Field", cardOptions, "Card choice: ")
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {

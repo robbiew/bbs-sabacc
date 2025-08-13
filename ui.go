@@ -458,12 +458,6 @@ func (sl *ScreenLayout) drawAIPlayerAreas() {
 	}
 }
 
-// // drawHumanPlayerArea draws the human player area at bottom center
-// func (sl *ScreenLayout) drawHumanPlayerArea() {
-// 	// Draw player name area
-// 	MoveCursor(sl.HumanPlayerX, sl.HumanNameY)
-// 	fmt.Printf("%s[Player Area]%s", GreenHi, Reset)
-// }
 
 // drawSimpleFaceArt draws character faces using external portraits
 func (sl *ScreenLayout) drawSimpleFaceArt(x, y, playerIndex int) {
@@ -481,7 +475,7 @@ func (sl *ScreenLayout) drawGameLogBorder() {
 	logW := sl.GameLogW
 
 	// Fill entire game log area with blue background
-	for i := 0; i <= sl.GameLogH; i++ {
+	for i := 0; i < sl.GameLogH; i++ {
 		MoveCursor(logX, logY+i)
 		fmt.Printf("\x1b[30;44m%s\x1b[0m", strings.Repeat(" ", logW))
 	}
@@ -628,11 +622,11 @@ func (sl *ScreenLayout) ShowMenu(title string, options []MenuOption, prompt stri
 	sl.ClearMenuArea()
 
 	// Show title
-	MoveCursor(2, sl.MenuY)
+	MoveCursor(4, sl.MenuY)
 	fmt.Printf("%s%s%s", GreenHi, title, Reset)
 
 	// Show options
-	MoveCursor(2, sl.MenuY+1)
+	MoveCursor(4, sl.MenuY+1)
 	optionTexts := make([]string, 0)
 	for _, opt := range options {
 		if opt.Enabled {
@@ -643,21 +637,20 @@ func (sl *ScreenLayout) ShowMenu(title string, options []MenuOption, prompt stri
 	fmt.Printf("%s%s%s", White, strings.Join(optionTexts, "  "), Reset)
 
 	// Show prompt
-	MoveCursor(2, sl.MenuY+2)
+	MoveCursor(4, sl.MenuY+2)
 	fmt.Printf("%s%s%s", Green, prompt, Reset)
 }
 
 // ShowPlayerTurnMenu displays the player turn menu
 func (sl *ScreenLayout) ShowPlayerTurnMenu(round int) {
 	options := []MenuOption{
-		{'D', "Draw card", true},
-		{'T', "Trade card", true},
+		{'D', "Draw", true},
+		{'T', "Trade", true},
 		{'S', "Stand", true},
-		{'F', "Static Field", true},
-		{'C', "Call", round >= 2},
+		{'F', "Field", true},
 		{'Q', "Fold", true},
 	}
-	sl.ShowMenu("Your Turn", options, "Choice: ")
+	sl.ShowMenu("Draw Phase", options, "Choice: ")
 }
 
 // LogMessage adds a message to the game log
@@ -672,40 +665,57 @@ func (sl *ScreenLayout) DisplayMessage(message, msgType string, duration int) {
 	sl.LogMessage(message, msgType)
 }
 
-// RefreshGameLog redraws the game log area with blue background
+// RefreshGameLog redraws the game log area with blue background and wraps long text
 func (sl *ScreenLayout) RefreshGameLog() {
 	// Clear the log area with blue background
-	for i := 0; i <= sl.GameLogH; i++ {
+	for i := 0; i < sl.GameLogH; i++ {
 		MoveCursor(sl.GameLogX, sl.GameLogY+i)
 		fmt.Printf("\x1b[30;44m%s\x1b[0m", strings.Repeat(" ", sl.GameLogW))
 	}
 
-	// Display recent messages with blue background
+	// Get recent messages and wrap them
 	messages := sl.GameLog.GetRecentMessages()
-	for i, msg := range messages {
-		if i < sl.GameLogH {
-			MoveCursor(sl.GameLogX, sl.GameLogY+i)
-			
-			// Start with blue background for entire line
-			fmt.Print("\x1b[30;44m")
-			
-			// Truncate message if too long
-			if len(msg) > sl.GameLogW-1 {
-				msg = msg[:sl.GameLogW-3] + "..."
-			}
-			
-			// Print message with padding
-			fmt.Printf(" %s", msg)
-			
-			// Calculate remaining space and fill with blue background
-			msgLen := len(stripANSI(msg))
-			if msgLen < sl.GameLogW-2 {
-				remaining := sl.GameLogW - msgLen - 2
-				fmt.Printf("\x1b[30;44m%s", strings.Repeat(" ", remaining))
-			}
-			
-			fmt.Print("\x1b[0m") // Reset at end of line
+	wrappedLines := []string{}
+	
+	// Wrap each message to fit within the log width (23 characters for text)
+	maxTextLen := 23
+	for _, msg := range messages {
+		cleanMsg := stripANSI(msg)
+		if len(cleanMsg) <= maxTextLen {
+			wrappedLines = append(wrappedLines, msg)
+		} else {
+			// Wrap the message into multiple lines
+			wrapped := wrapText(msg, maxTextLen)
+			wrappedLines = append(wrappedLines, wrapped...)
 		}
+	}
+	
+	// Display the most recent wrapped lines (from bottom up)
+	linesToShow := sl.GameLogH
+	startIndex := len(wrappedLines) - linesToShow
+	if startIndex < 0 {
+		startIndex = 0
+	}
+	
+	for i := 0; i < linesToShow && startIndex+i < len(wrappedLines); i++ {
+		line := wrappedLines[startIndex+i]
+		MoveCursor(sl.GameLogX, sl.GameLogY+i)
+		
+		// Start with blue background for entire line
+		fmt.Print("\x1b[30;44m")
+		
+		// Print message with padding
+		fmt.Printf(" %s", line)
+		
+		// Calculate remaining space and fill with blue background
+		msgLen := len(stripANSI(line))
+		if msgLen < maxTextLen {
+			remaining := maxTextLen - msgLen
+			fmt.Printf("\x1b[30;44m%s", strings.Repeat(" ", remaining))
+		}
+		fmt.Print(" ") // Right padding
+		
+		fmt.Print("\x1b[0m") // Reset at end of line
 	}
 }
 
@@ -817,12 +827,6 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticF
 	}
 }
 
-// RenderStaticField is no longer needed since asterisks under player cards indicate static field
-func (sl *ScreenLayout) RenderStaticField(cards []Card, renderer *CardRenderer) {
-	// Static field indication is now handled by yellow asterisks under player cards
-	// This function is kept for compatibility but does nothing
-	// The asterisks in RenderPlayerCards show which cards are in static field (visible to AI)
-}
 
 // GameLog methods
 func (gl *GameLog) AddMessage(message, msgType string) {
@@ -878,19 +882,6 @@ func getSuitColorForAI(card Card) string {
 	}
 }
 
-// getCardValueDisplay returns a single character display for AI cards to avoid width issues
-func getCardValueDisplay(card Card) string {
-	if card.Value > 9 {
-		return "+" // Use + for values > 9
-	} else if card.Value > 0 && card.Value <= 9 {
-		return fmt.Sprintf("%d", card.Value) // Single digit only
-	} else if card.Value < -9 {
-		return "-" // Use - for values < -9
-	} else if card.Value < 0 && card.Value >= -9 {
-		return fmt.Sprintf("%d", card.Value)[1:] // Remove negative sign, single digit only
-	}
-	return "0"
-}
 
 // renderCardAtPosition renders a card at a specific position using proper cursor positioning
 func (sl *ScreenLayout) renderCardAtPosition(x, y int, card Card, renderer *CardRenderer) {
@@ -913,4 +904,149 @@ func (sl *ScreenLayout) renderCardAtPosition(x, y int, card Card, renderer *Card
 		MoveCursor(x, y+i)
 		fmt.Print(line)
 	}
+}
+
+// wrapText wraps a message to fit within the specified width, preserving ANSI color codes
+func wrapText(text string, maxWidth int) []string {
+	if len(stripANSI(text)) <= maxWidth {
+		return []string{text}
+	}
+	
+	var lines []string
+	remaining := text
+	currentColor := "" // Track the active color code
+	
+	for len(stripANSI(remaining)) > maxWidth {
+		// Find the best break point within maxWidth characters
+		breakPoint := maxWidth
+		cleanText := stripANSI(remaining)
+		
+		// Look for a space to break on (word wrapping)
+		for i := maxWidth - 1; i >= maxWidth/2; i-- {
+			if i < len(cleanText) && cleanText[i] == ' ' {
+				breakPoint = i
+				break
+			}
+		}
+		
+		// Extract the line up to the break point, preserving ANSI codes
+		line := extractTextWithANSI(remaining, breakPoint)
+		
+		// Extract the current color from this line
+		currentColor = extractCurrentColor(line)
+		
+		lines = append(lines, line)
+		
+		// Remove the extracted portion from remaining text
+		remaining = remaining[findANSIAwarePosition(remaining, breakPoint):]
+		
+		// Skip leading spaces in the next line
+		for len(remaining) > 0 && remaining[0] == ' ' {
+			remaining = remaining[1:]
+		}
+		
+		// Prepend the current color to the continuation line if we have one
+		if currentColor != "" && len(stripANSI(remaining)) > 0 {
+			remaining = currentColor + remaining
+		}
+	}
+	
+	// Add any remaining text as the last line
+	if len(stripANSI(remaining)) > 0 {
+		// Ensure final line has proper color if needed
+		if currentColor != "" && !strings.Contains(remaining, "\x1b[") {
+			remaining = currentColor + remaining
+		}
+		lines = append(lines, remaining)
+	}
+	
+	return lines
+}
+
+// extractTextWithANSI extracts text up to a certain character count while preserving ANSI codes
+func extractTextWithANSI(text string, charCount int) string {
+	if charCount <= 0 {
+		return ""
+	}
+	
+	var result strings.Builder
+	visibleCount := 0
+	i := 0
+	
+	for i < len(text) && visibleCount < charCount {
+		if text[i] == '\x1b' && i+1 < len(text) && text[i+1] == '[' {
+			// ANSI escape sequence - copy it entirely
+			start := i
+			i += 2
+			for i < len(text) && text[i] != 'm' {
+				i++
+			}
+			if i < len(text) {
+				i++ // Include the 'm'
+			}
+			result.WriteString(text[start:i])
+		} else {
+			// Regular character
+			result.WriteByte(text[i])
+			visibleCount++
+			i++
+		}
+	}
+	
+	return result.String()
+}
+
+// extractCurrentColor extracts the last color code from a text string
+func extractCurrentColor(text string) string {
+	lastColorStart := -1
+	i := 0
+	
+	for i < len(text)-1 {
+		if text[i] == '\x1b' && text[i+1] == '[' {
+			lastColorStart = i
+		}
+		i++
+	}
+	
+	if lastColorStart == -1 {
+		return ""
+	}
+	
+	// Extract from lastColorStart to the 'm' character
+	for i := lastColorStart + 2; i < len(text); i++ {
+		if text[i] == 'm' {
+			return text[lastColorStart : i+1]
+		}
+	}
+	
+	return ""
+}
+
+// findANSIAwarePosition finds the byte position after skipping a certain number of visible characters
+func findANSIAwarePosition(text string, charCount int) int {
+	if charCount <= 0 {
+		return 0
+	}
+	
+	visibleCount := 0
+	i := 0
+	
+	for i < len(text) && visibleCount < charCount {
+		if text[i] == '\x1b' && i+1 < len(text) && text[i+1] == '[' {
+			// Skip ANSI escape sequence
+			i += 2
+			for i < len(text) && text[i] != 'm' {
+				i++
+			}
+			if i < len(text) {
+				i++ // Skip the 'm'
+			}
+		} else {
+			// Regular character
+			visibleCount++
+			i++
+		}
+	}
+	
+	return i
 }
