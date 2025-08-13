@@ -522,7 +522,7 @@ func handleComputerTurn() {
 		return
 	}
 
-	game.Layout.LogMessage(computer.Name+" is thinking...", "info")
+	game.Layout.LogMessage(computer.Name+" is thinking... ", "info")
 	time.Sleep(1 * time.Second)
 
 	// PHASE 1: BETTING PHASE (Classic Sabacc AI)
