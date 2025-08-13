@@ -175,12 +175,13 @@ func startNewGame() {
 
 	// Reset game state
 	game.Round = 0
-	game.Turn = 1 // Start with player to dealer's left
+	game.Turn = 0 // Start with human player so they can see Check option
 	game.Dealer = 0
 	game.Called = false
 	game.GameOver = false
 	game.BettingPhase = false
 	game.ShiftOccurred = false
+	game.CurrentBet = 0 // Reset current bet to 0 for new game
 
 	// Setup players: 1 human + 4 AI players to match UI layout
 	game.Players = []Player{
@@ -228,7 +229,7 @@ func startNewGame() {
 
 func gameLoop() {
 	game.Round = 1
-	game.Turn = 1 // Start with player after dealer
+	game.Turn = 0 // Start with human player so they can see Check option
 
 	for !game.GameOver {
 		displayGameScreen()
@@ -357,12 +358,15 @@ func handlePlayerBetting() bool {
 		{'F', "Fold (1 credit penalty)", true},
 	}
 
-	game.Layout.ShowMenu("Betting Phase", bettingOptions, "Betting: ")
+	game.Layout.ShowCompactMenu(bettingOptions)
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
 		return true
 	}
+
+	// Clear the compact menu after selection
+	game.Layout.ClearCompactMenu()
 
 	playerRef := &game.Players[0]
 
@@ -465,12 +469,23 @@ func handlePlayerDraw() {
 	game.Layout.DisplayMessage("DRAW PHASE", "info", 0)
 	time.Sleep(1 * time.Second)
 
-	game.Layout.ShowPlayerTurnMenu(game.Round)
+	drawOptions := []MenuOption{
+		{'D', "Draw", true},
+		{'T', "Trade", true},
+		{'S', "Stand", true},
+		{'F', "Field", true},
+		{'Q', "Fold", true},
+	}
+
+	game.Layout.ShowCompactMenu(drawOptions)
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
 		return
 	}
+
+	// Clear the compact menu after selection
+	game.Layout.ClearCompactMenu()
 
 	playerRef := &game.Players[0]
 
@@ -791,6 +806,7 @@ func rollForShift() {
 func nextTurn() {
 	// Move to next player
 	originalTurn := game.Turn
+	previousRound := game.Round
 
 	for {
 		game.Turn = (game.Turn + 1) % len(game.Players)
@@ -804,6 +820,11 @@ func nextTurn() {
 		if !game.Players[game.Turn].Folded || game.Turn == originalTurn {
 			break
 		}
+	}
+
+	// Reset current bet when starting a new round
+	if game.Round > previousRound {
+		game.CurrentBet = 0
 	}
 }
 

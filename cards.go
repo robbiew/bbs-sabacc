@@ -717,31 +717,31 @@ func handleTradeCard() {
 	player := &game.Players[0]
 
 	if len(player.Hand) < 2 {
-		fmt.Printf("\n%sYou need at least 2 cards to trade!%s\n", Red, Reset)
+		game.Layout.DisplayMessage("You need at least 2 cards to trade!", "error", 0)
 		time.Sleep(1 * time.Second)
 		return
 	}
 
-	ClearScreen()
-	fmt.Print(CyanHi + strings.Repeat("\xcd", 43) + "\n" + Reset)
-	fmt.Print(CyanHi + "              TRADE A CARD\n" + Reset)
-	fmt.Print(CyanHi + strings.Repeat("\xcd", 43) + "\n\n" + Reset)
-
-	fmt.Printf("%sSelect a card to trade:%s\n\n", Yellow, Reset)
-
+	// Create menu options for each card in hand
+	var tradeOptions []MenuOption
 	for i, card := range player.Hand {
-		fmt.Printf("%s[%d]%s %s[%s]%s\n",
-			Green, i+1, Reset,
-			getCardColor(card), card.String(), Reset)
+		tradeOptions = append(tradeOptions, MenuOption{
+			Key:         rune('1' + i),
+			Description: fmt.Sprintf("Trade [%s]", card.String()),
+			Enabled:     true,
+		})
 	}
+	tradeOptions = append(tradeOptions, MenuOption{'0', "Cancel", true})
 
-	fmt.Printf("\n%s[0] Cancel%s\n\n", Red, Reset)
-	fmt.Print(Green + "Choice: " + Reset)
+	game.Layout.ShowCompactMenu(tradeOptions)
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
 		return
 	}
+
+	// Clear the compact menu after selection
+	game.Layout.ClearCompactMenu()
 
 	choice := int(char - '0')
 	if choice == 0 {
@@ -749,7 +749,7 @@ func handleTradeCard() {
 	}
 
 	if choice < 1 || choice > len(player.Hand) {
-		fmt.Printf("\n%sInvalid choice!%s\n", Red, Reset)
+		game.Layout.DisplayMessage("Invalid choice!", "error", 0)
 		time.Sleep(1 * time.Second)
 		return
 	}
@@ -763,11 +763,10 @@ func handleTradeCard() {
 		newCard := game.Deck.Deal()
 		player.Hand = append(player.Hand, newCard)
 
-		fmt.Printf("\n%sYou traded %s[%s]%s for %s[%s]%s\n",
-			Green, getCardColor(tradedCard), tradedCard.String(), Reset,
-			getCardColor(newCard), newCard.String(), Reset)
+		game.Layout.LogMessage(fmt.Sprintf("You traded [%s] for [%s]", tradedCard.String(), newCard.String()), "action")
+		game.Layout.DisplayMessage(fmt.Sprintf("You traded [%s] for [%s]", tradedCard.String(), newCard.String()), "success", 0)
 	} else {
-		fmt.Printf("\n%sNo more cards in deck!%s\n", Red, Reset)
+		game.Layout.DisplayMessage("No more cards in deck!", "error", 0)
 	}
 
 	time.Sleep(2 * time.Second)

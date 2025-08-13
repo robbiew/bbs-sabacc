@@ -140,7 +140,7 @@ func NewScreenLayout(termW, termH int) *ScreenLayout {
 
 		// Status and Menu UI elements
 		StatusY: 13, 
-		MenuY:   24,
+		MenuY:   24, // Menu on bottom row for compact display
 
 		// Card and face display settings
 		CardWidth:   6,                 // card width (matches card database)
@@ -641,17 +641,43 @@ func (sl *ScreenLayout) ShowMenu(title string, options []MenuOption, prompt stri
 	fmt.Printf("%s%s%s", Green, prompt, Reset)
 }
 
-// ShowPlayerTurnMenu displays the player turn menu
-func (sl *ScreenLayout) ShowPlayerTurnMenu(round int) {
-	options := []MenuOption{
-		{'D', "Draw", true},
-		{'T', "Trade", true},
-		{'S', "Stand", true},
-		{'F', "Field", true},
-		{'Q', "Fold", true},
+// ShowCompactMenu displays just the options on one line without title or prompt, centered
+func (sl *ScreenLayout) ShowCompactMenu(options []MenuOption) {
+	// Clear just the menu line
+	MoveCursor(1, sl.MenuY)
+	fmt.Print(EraseLine)
+	
+	// Build option texts with new colors
+	optionTexts := make([]string, 0)
+	for _, opt := range options {
+		if opt.Enabled {
+			// Dark Magenta brackets, Bright Blue keys, Bright Magenta text
+			text := fmt.Sprintf("%s[%s%c%s%s] %s%s%s", Magenta, BlueHi, opt.Key, Reset, Magenta, MagentaHi, opt.Description, Reset)
+			optionTexts = append(optionTexts, text)
+		}
 	}
-	sl.ShowMenu("Draw Phase", options, "Choice: ")
+	
+	// Join options and calculate center position
+	menuText := strings.Join(optionTexts, "  ")
+	
+	// Strip ANSI codes to get actual display length for centering
+	displayLength := len(stripANSI(menuText))
+	startX := (sl.TerminalW - displayLength) / 2
+	if startX < 1 {
+		startX = 1
+	}
+	
+	// Show centered menu
+	MoveCursor(startX, sl.MenuY)
+	fmt.Print(menuText)
 }
+
+// ClearCompactMenu clears the compact menu line
+func (sl *ScreenLayout) ClearCompactMenu() {
+	MoveCursor(1, sl.MenuY)
+	fmt.Print(EraseLine)
+}
+
 
 // LogMessage adds a message to the game log
 func (sl *ScreenLayout) LogMessage(message, msgType string) {
