@@ -16,6 +16,7 @@
 # Linux binaries (executables without extension)
 sabacc
 cmd/build-cards/build-cards
+bbs-sabacc
 
 # Alternative: ignore all files without extension that are executable
 # This is more aggressive but catches most Linux binaries
@@ -82,3 +83,6 @@ stats/
 sabacc_cards.bin
 card_index.txt
 card_preview.ans
+
+# Roo Code configuration and access tokens
+.roo/

@@ -19,7 +19,14 @@
 
 ## Critical Issues Requiring Immediate Attention
 
-### 🔴 **PRIORITY 1: Game Flow Bug**
+### ✅ **RESOLVED: SECURITY - .roo Directory Exposure**
+**Issue**: `.roo` directory containing access tokens not in `.gitignore`
+**Impact**: ⚠️ **SECURITY RISK** - Potential credential exposure
+**Location**: [`.gitignore`](.gitignore) - now includes `.roo/` entry
+**Status**: ✅ **FIXED** - Security vulnerability resolved
+**Resolution**: Added `.roo/` to `.gitignore` (2025-08-14)
+
+### � **PRIORITY 1: Game Flow Bug**
 **Issue**: Game ends after 1 round instead of continuing for multiple hands
 **Impact**: Breaks core gameplay loop
 **Location**: [`main.go:gameLoop()`](main.go:232)

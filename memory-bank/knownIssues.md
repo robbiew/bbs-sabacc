@@ -2,6 +2,24 @@
 
 ## 🔴 **Critical Issues** (Blocking Core Functionality)
 
+### Issue #0: Security Risk - .roo Directory Not in .gitignore ✅ **RESOLVED**
+**Status**: ✅ **FIXED** - `.roo/` added to `.gitignore`
+**Location**: [`.gitignore`](.gitignore) - now includes `.roo/` entry
+**Severity**: ⭐⭐⭐⭐⭐ (was critical, now resolved)
+
+**Description**: The `.roo` directory contained access tokens and sensitive configuration data but was not excluded from version control.
+
+**Resolution Applied**:
+```
+# Roo Code configuration and access tokens
+.roo/
+```
+
+**Status**: ✅ **SECURITY ISSUE RESOLVED** - Access tokens now properly protected from version control exposure.
+**Resolved**: 2025-08-14
+
+---
+
 ### Issue #1: Game Loop Termination Bug
 **Status**: 🔥 **CRITICAL** - Breaks primary game loop  
 **Location**: [`main.go:gameLoop()`](main.go:232) - lines 322-338  
