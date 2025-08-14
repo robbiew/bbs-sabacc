@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	_ "embed"
 	"fmt"
 	"os"
 	"regexp"
@@ -90,6 +91,14 @@ var (
 	Idle       = 60 // Default idle timeout in seconds
 	CurrentUser User
 	gameLayout *ScreenLayout // Reference to game layout for timeout warnings
+
+	// Embedded result art files
+	//go:embed ansi/result-sabacc.ans
+	SabaccResultArt string
+	//go:embed ansi/result-bomb.ans
+	BombResultArt string
+	//go:embed ansi/result-shift.ans
+	ShiftResultArt string
 )
 
 // Terminal Control Functions (replacing godoors functions)
@@ -329,8 +338,45 @@ func displayHandValue(total int) string {
 }
 
 
-// displayAsciiArt shows ASCII art for special events
+// displayAsciiArt shows ASCII art for special events using embedded ANSI files
 func displayAsciiArt(artType string) {
+	var artContent string
+	
+	// Select the appropriate embedded art
+	switch artType {
+	case "sabacc":
+		if SabaccResultArt != "" {
+			artContent = SabaccResultArt
+		} else {
+			displayFallbackArt(artType)
+			return
+		}
+	case "bomb":
+		if BombResultArt != "" {
+			artContent = BombResultArt
+		} else {
+			displayFallbackArt(artType)
+			return
+		}
+	case "shift":
+		if ShiftResultArt != "" {
+			artContent = ShiftResultArt
+		} else {
+			displayFallbackArt(artType)
+			return
+		}
+	default:
+		// Unknown art type, use fallback
+		displayFallbackArt(artType)
+		return
+	}
+	
+	// Display the embedded ANSI art at a centered position
+	PrintAnsiLoc(artContent, 15, 12) // Centered position for art display
+}
+
+// displayFallbackArt shows hardcoded ASCII art as fallback
+func displayFallbackArt(artType string) {
 	switch artType {
 	case "sabacc":
 		fmt.Print(GreenHi)

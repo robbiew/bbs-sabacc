@@ -29,6 +29,71 @@
 
 **Root Cause**: Game loop logic issue in the exit condition and state management
 ```go
+
+### Issue #13: Static Field Should Be Optional Step, Not End Turn
+**Status**: 🔥 **NEW** - Game mechanics issue  
+**Location**: [`main.go:handlePlayerDraw()`](main.go) and [`cards.go:handleStaticField()`](cards.go)
+**Severity**: ⭐⭐⭐⭐  
+
+**Description**: Currently, using the Static Field (placing or removing cards) ends the player's turn. However, Static Field management should be an optional step during the Draw Phase that allows players to continue with normal play actions (Draw, Trade, Stand) after Static Field operations.
+
+**Current Behavior**: 
+- Player selects "Field" option during Draw Phase
+- Player places/removes card in/from Static Field  
+- Turn ends immediately
+
+**Expected Behavior**:
+- Player can manage Static Field as an additional option
+- After Static Field action, player can still Draw, Trade, or Stand
+- Static Field management doesn't consume the entire turn
+
+**Impact**:
+- Breaks authentic Sabacc gameplay mechanics
+- Limits strategic options for players
+- Forces players to choose between Static Field management and card actions
+
+**Fix Required**: 
+1. Restructure Draw Phase menu to allow multiple actions per turn
+2. Make Static Field an optional preparatory step
+
+## 🟢 **Enhancement Requests** (New Features)
+
+### Enhancement #1: AI Strategic Analysis of Opponent Static Fields
+**Status**: 💡 **ENHANCEMENT** - AI intelligence improvement  
+**Location**: [`main.go`](main.go) - AI decision making functions
+**Priority**: ⭐⭐⭐  
+
+**Description**: AI players should analyze visible cards in opponents' Static Fields to inform their strategic decisions. Static Field cards provide valuable intelligence about opponent hand composition, strategies, and potential winning hands.
+
+**Current AI Behavior**: 
+- AI decisions based primarily on own hand strength
+- Limited analysis of opponent visible cards
+- Basic card counting from Static Fields
+
+**Proposed Enhancement**:
+- **Hand Strength Assessment**: Analyze opponent Static Field cards to estimate their hand strength and potential
+- **Strategic Adaptation**: Adjust betting patterns based on opponent Static Field contents
+- **Card Tracking**: Enhanced card counting considering what's protected in Static Fields
+- **Risk Assessment**: Evaluate bomb-out risks based on opponent protected cards
+- **Calling Decisions**: Factor opponent Static Field strength when deciding to call hands
+
+**Implementation Areas**:
+1. `evaluateAICallDecision()` - Enhanced opponent strength analysis
+2. `handleComputerBetting()` - Betting strategy based on visible opponent cards
+3. `assessOpponentStrengthFromVisibleCards()` - Expanded analysis logic
+4. `analyzeAvailableCards()` - Improved card availability calculations
+
+**Benefits**:
+- More realistic and challenging AI opponents
+- Enhanced strategic depth and gameplay
+- Better simulation of human-like analysis and decision-making
+- Increased replay value through varied AI behaviors
+
+**Complexity**: Medium - requires expanding existing AI analysis functions
+
+3. Allow players to perform normal draw actions after Static Field management
+4. Update AI logic to handle multi-action turns
+
 // Problem area in gameLoop()
 showGameResults()
 
@@ -268,3 +333,36 @@ cat sabacc.conf | jq .
 
 *Issues documented: 2025-08-14*  
 *Next review: After critical bug fixes*
+
+[2025-01-14 15:04:28] - **NEW ISSUES IDENTIFIED DURING TESTING**
+
+### Issue #11: Human Player Total Not Updated After Sabacc Shift
+**Status**: 🔥 **NEW** - Gameplay display issue  
+**Location**: Game display system after Sabacc Shift occurs
+**Severity**: ⭐⭐⭐  
+
+**Description**: After a Sabacc Shift occurs, the human player's displayed card total is not updated to reflect the new hand composition. The display shows the old total even though the cards have been reshuffled and redealt.
+
+**Impact**: 
+- Misleading information displayed to player
+- Player cannot make informed decisions
+- Affects strategic gameplay
+
+**Fix Required**: Update display system to refresh human player total after Sabacc Shift
+
+### Issue #12: Human Player Card Spacing Too Wide
+**Status**: 🔄 **NEW** - UI spacing issue  
+**Location**: [`ui.go`](ui.go) - Human player card rendering
+**Severity**: ⭐⭐  
+
+**Description**: Human player cards currently have 2 blank spaces between each card instead of the intended 1 space, making the cards appear too spread out.
+
+**Current Spacing**: Card width (6) + 1 space = 7 characters between card start positions
+**Desired Spacing**: Card width (6) + 1 space = 7 characters total, but only 1 visible space between cards
+
+**Impact**: 
+- Visual inconsistency in card layout
+- Cards appear unnecessarily spread out
+- Poor visual aesthetics
+
+**Fix Required**: Adjust card spacing calculation to show only 1 space between cards
