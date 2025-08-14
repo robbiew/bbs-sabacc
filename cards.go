@@ -749,8 +749,9 @@ func handleTradeCard() {
 	}
 
 	if choice < 1 || choice > len(player.Hand) {
-		game.Layout.DisplayMessage("Invalid choice!", "error", 0)
+		game.Layout.DisplayMessage("Invalid choice! Enter 1-"+fmt.Sprintf("%d", len(player.Hand))+" or 0", "error", 0)
 		time.Sleep(1 * time.Second)
+		handleTradeCard() // Loop back for valid input
 		return
 	}
 
@@ -763,7 +764,6 @@ func handleTradeCard() {
 		newCard := game.Deck.Deal()
 		player.Hand = append(player.Hand, newCard)
 
-		game.Layout.LogMessage(fmt.Sprintf("You traded [%s] for [%s]", tradedCard.String(), newCard.String()), "action")
 		game.Layout.DisplayMessage(fmt.Sprintf("You traded [%s] for [%s]", tradedCard.String(), newCard.String()), "success", 0)
 	} else {
 		game.Layout.DisplayMessage("No more cards in deck!", "error", 0)
@@ -773,19 +773,22 @@ func handleTradeCard() {
 }
 
 func handleStaticField() {
-	// Use the new UI system for static field management
+	// UI Tweak 3: Use compact menu for Static Field (single row format)
 	staticOptions := []MenuOption{
 		{'1', "Place card in Static Field", true},
 		{'2', "Remove card from Static Field", true},
 		{'0', "Cancel", true},
 	}
 
-	game.Layout.ShowMenu("Static Field Management", staticOptions, "Static choice: ")
+	game.Layout.ShowCompactMenu(staticOptions)
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
 		return
 	}
+	
+	// Clear the compact menu after selection
+	game.Layout.ClearCompactMenu()
 
 	switch char {
 	case '1':
@@ -794,6 +797,10 @@ func handleStaticField() {
 		removeFromStaticField()
 	case '0':
 		return
+	default:
+		game.Layout.DisplayMessage("Invalid choice! Press 1/2/0", "error", 0)
+		time.Sleep(1 * time.Second)
+		handleStaticField() // Loop back for valid input
 	}
 }
 
@@ -801,7 +808,6 @@ func placeInStaticField() {
 	player := &game.Players[0]
 
 	if len(player.Hand) == 0 {
-		game.Layout.LogMessage("No cards in hand!", "error")
 		game.Layout.DisplayMessage("No cards in hand!", "error", 0)
 		time.Sleep(1 * time.Second)
 		return
@@ -834,8 +840,9 @@ func placeInStaticField() {
 	}
 
 	if choice < 1 || choice > len(player.Hand) {
-		game.Layout.DisplayMessage("Invalid choice!", "error", 0)
+		game.Layout.DisplayMessage("Invalid choice! Enter 1-"+fmt.Sprintf("%d", len(player.Hand))+" or 0", "error", 0)
 		time.Sleep(1 * time.Second)
+		placeInStaticField() // Loop back for valid input
 		return
 	}
 
@@ -854,8 +861,7 @@ func placeInStaticField() {
 		player.StaticField = append(player.StaticField, card) // Add to static field (card remains in hand)
 	}
 
-	game.Layout.LogMessage(fmt.Sprintf("Placed [%s] in Static Field (protected from shifts)", card.String()), "success")
-	game.Layout.DisplayMessage(fmt.Sprintf("Placed [%s] in Static Field", card.String()), "success", 0)
+	game.Layout.DisplayMessage(fmt.Sprintf("Placed [%s] in Static Field (protected from shifts)", card.String()), "success", 0)
 	time.Sleep(2 * time.Second)
 
 	// Refresh the game display to show updated static field
@@ -866,7 +872,6 @@ func removeFromStaticField() {
 	player := &game.Players[0]
 
 	if len(player.StaticField) == 0 {
-		game.Layout.LogMessage("No cards in Static Field!", "error")
 		game.Layout.DisplayMessage("No cards in Static Field!", "error", 0)
 		time.Sleep(1 * time.Second)
 		return
@@ -899,8 +904,9 @@ func removeFromStaticField() {
 	}
 
 	if choice < 1 || choice > len(player.StaticField) {
-		game.Layout.DisplayMessage("Invalid choice!", "error", 0)
+		game.Layout.DisplayMessage("Invalid choice! Enter 1-"+fmt.Sprintf("%d", len(player.StaticField))+" or 0", "error", 0)
 		time.Sleep(1 * time.Second)
+		removeFromStaticField() // Loop back for valid input
 		return
 	}
 
@@ -909,7 +915,6 @@ func removeFromStaticField() {
 	player.StaticField = append(player.StaticField[:choice-1], player.StaticField[choice:]...)
 	// Card remains in hand - it was never removed
 
-	game.Layout.LogMessage(fmt.Sprintf("[%s] returned to hand", card.String()), "success")
 	game.Layout.DisplayMessage(fmt.Sprintf("[%s] returned to hand", card.String()), "success", 0)
 	time.Sleep(2 * time.Second)
 

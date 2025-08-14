@@ -101,17 +101,34 @@ func (pm *PortraitManager) RandomizeSelection() {
 
 **Expected Outcome**: Static Field works reliably as per authentic Sabacc rules
 
-#### Task 1.4: UI Layout Consistency
-**Issue**: Various positioning and alignment problems  
+#### Task 1.4: UI Layout Consistency & Priority Tweaks
+**Issue**: Various positioning and alignment problems
 **Location**: [`ui.go`](ui.go) rendering functions
 
-**Key Areas**:
-1. **Card positioning**: Standardize spacing and alignment across all players
-2. **Menu alignment**: Center menus properly on all screen sizes
-3. **Status information**: Prevent overlap and ensure readability
-4. **Game log formatting**: Improve text wrapping and message display
+**Priority UI Improvements**:
+1. **AI Player Name Separators**: Add CP437 horizontal line (`─`) underneath each AI player name
+   - Implementation: Add line at `y+1` position after name display
+   - Impact: Shifts card display and static fields down one line for better visual separation
+   
+2. **AI Credits Right Justification**: Right-justify AI player credits (`$XXX`)
+   - Location: [`ui.go:UpdatePlayerInfo()`](ui.go:537) for AI players
+   - Fix: Calculate proper spacing to right-align credits away from names
+   
+3. **Static Field Menu Consistency**: Convert Static Field menus to compact single-row format
+   - Location: [`cards.go:handleStaticField()`](cards.go:775)
+   - Change: Use `ShowCompactMenu()` instead of multi-line `ShowMenu()`
+   
+4. **Folded Player Visual Indicator**: Display " FOLDED! " on last row of AI portraits
+   - Location: Portrait rendering in [`ui.go`](ui.go) or [`portraits.go`](portraits.go)
+   - Implementation: Override last portrait row with " FOLDED! " text when `player.Folded == true`
 
-**Expected Outcome**: Professional, consistent visual presentation
+**Additional Areas**:
+- Card positioning consistency across all players
+- Menu alignment and centering improvements
+- Status information overlap prevention
+- Game log message wrapping enhancements
+
+**Expected Outcome**: Professional, consistent visual presentation with improved user experience
 
 ---
 

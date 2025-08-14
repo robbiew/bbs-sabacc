@@ -442,17 +442,25 @@ func (sl *ScreenLayout) drawAIPlayerAreas() {
 		// Draw portrait from ANSI file
 		sl.drawSimpleFaceArt(player.x, player.y, i)
 
-		// Draw player name and credits  
+		// Draw player name and credits
 		portraitWidth := sl.FaceWidth - 2 // FaceWidth includes +2 for borders, so subtract for actual portrait
 		nameOffset := 16 // Standard offset for right-side player names
 		
+		var nameX int
 		if player.isLeft {
-			MoveCursor(player.x+portraitWidth+1, player.y)
+			nameX = player.x + portraitWidth + 1
+			MoveCursor(nameX, player.y)
 		} else {
 			// Right side players: use same positioning as UpdatePlayerInfo
-			MoveCursor(player.x-nameOffset, player.y)
+			nameX = player.x - nameOffset
+			MoveCursor(nameX, player.y)
 		}
 		fmt.Printf("%s%s%s", CyanHi, player.name, Reset)
+		
+		// UI Tweak 1: Add CP437 horizontal line underneath AI player name
+		MoveCursor(nameX, player.y+1)
+		lineLength := len(player.name)
+		fmt.Printf("%s%s%s", CyanHi, strings.Repeat(HORIZONTAL_LINE, lineLength), Reset)
 	}
 }
 
@@ -549,7 +557,7 @@ func (sl *ScreenLayout) UpdatePlayerInfo(playerIndex int, name string, credits, 
 		switch playerIndex {
 		case 1: // Top-left (PHOOJA)
 			x, y = sl.AIPlayer1X+portraitWidth+1, sl.AIPlayer1Y
-		case 2: // Top-right (ASH-TAAC)  
+		case 2: // Top-right (ASH-TAAC)
 			x, y = sl.AIPlayer2X-nameOffset, sl.AIPlayer2Y
 		case 3: // Bottom-left (OOLANGA)
 			x, y = sl.AIPlayer3X+portraitWidth+1, sl.AIPlayer3Y
@@ -557,15 +565,25 @@ func (sl *ScreenLayout) UpdatePlayerInfo(playerIndex int, name string, credits, 
 			x, y = sl.AIPlayer4X-nameOffset, sl.AIPlayer4Y
 		}
 		
-		// Calculate exact space needed: name + space + $ + digits
+		// UI Tweak 2: Right-justify AI player credits
 		creditsText := fmt.Sprintf("$%d", credits)
-		totalLength := len(name) + 1 + len(creditsText)
+		availableSpace := 15 // Maximum space available for name and credits
+		nameLength := len(name)
+		creditsLength := len(creditsText)
+		spacesNeeded := availableSpace - nameLength - creditsLength
 		
-		// Clear only the exact space needed
+		// Ensure minimum 1 space between name and credits
+		if spacesNeeded < 1 {
+			spacesNeeded = 1
+		}
+		
+		// Clear the area first
 		MoveCursor(x, y)
-		fmt.Print(strings.Repeat(" ", totalLength))
+		fmt.Print(strings.Repeat(" ", availableSpace))
+		
+		// Display name, spaces, then right-justified credits
 		MoveCursor(x, y)
-		fmt.Printf("%s%s %s%s%s", CyanHi, name, Yellow, creditsText, Reset)
+		fmt.Printf("%s%s%s%s%s%s%s", CyanHi, name, Reset, strings.Repeat(" ", spacesNeeded), Yellow, creditsText, Reset)
 	}
 }
 
@@ -584,14 +602,14 @@ func (sl *ScreenLayout) ClearPlayerArea(playerIndex int) {
 		nameOffset := 16 // Standard offset for right-side player names
 		
 		switch playerIndex {
-		case 1: // AI 1 - Top-left, cards next to portrait under name
-			x, y = sl.AIPlayer1X+portraitWidth+1, sl.AIPlayer1Y+1
-		case 2: // AI 2 - Top-right, cards left of portrait under name  
-			x, y = sl.AIPlayer2X-nameOffset, sl.AIPlayer2Y+1
-		case 3: // AI 3 - Bottom-left, cards next to portrait under name
-			x, y = sl.AIPlayer3X+portraitWidth+1, sl.AIPlayer3Y+1
-		case 4: // AI 4 - Bottom-right, cards left of portrait under name
-			x, y = sl.AIPlayer4X-nameOffset, sl.AIPlayer4Y+1
+		case 1: // AI 1 - Top-left, cards next to portrait under name and horizontal line
+			x, y = sl.AIPlayer1X+portraitWidth+1, sl.AIPlayer1Y+2
+		case 2: // AI 2 - Top-right, cards left of portrait under name and horizontal line
+			x, y = sl.AIPlayer2X-nameOffset, sl.AIPlayer2Y+2
+		case 3: // AI 3 - Bottom-left, cards next to portrait under name and horizontal line
+			x, y = sl.AIPlayer3X+portraitWidth+1, sl.AIPlayer3Y+2
+		case 4: // AI 4 - Bottom-right, cards left of portrait under name and horizontal line
+			x, y = sl.AIPlayer4X-nameOffset, sl.AIPlayer4Y+2
 		}
 		// Clear AI card area with proper width for card display (max 15 columns)
 		MoveCursor(x, y)
@@ -879,14 +897,14 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticF
 	switch playerIndex {
 	case 0: // Human player
 		x, y = sl.HumanPlayerX, sl.HumanPlayerY
-	case 1: // AI 1 - Top-left, cards next to portrait under name
-		x, y = sl.AIPlayer1X+portraitWidth+1, sl.AIPlayer1Y+1
-	case 2: // AI 2 - Top-right, cards left of portrait under name  
-		x, y = sl.AIPlayer2X-nameOffset, sl.AIPlayer2Y+1
-	case 3: // AI 3 - Bottom-left, cards next to portrait under name
-		x, y = sl.AIPlayer3X+portraitWidth+1, sl.AIPlayer3Y+1
-	case 4: // AI 4 - Bottom-right, cards left of portrait under name
-		x, y = sl.AIPlayer4X-nameOffset, sl.AIPlayer4Y+1
+	case 1: // AI 1 - Top-left, cards next to portrait under name and horizontal line
+		x, y = sl.AIPlayer1X+portraitWidth+1, sl.AIPlayer1Y+2
+	case 2: // AI 2 - Top-right, cards left of portrait under name and horizontal line
+		x, y = sl.AIPlayer2X-nameOffset, sl.AIPlayer2Y+2
+	case 3: // AI 3 - Bottom-left, cards next to portrait under name and horizontal line
+		x, y = sl.AIPlayer3X+portraitWidth+1, sl.AIPlayer3Y+2
+	case 4: // AI 4 - Bottom-right, cards left of portrait under name and horizontal line
+		x, y = sl.AIPlayer4X-nameOffset, sl.AIPlayer4Y+2
 	default:
 		return
 	}
@@ -920,12 +938,12 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticF
 				// Position each card with proper spacing (2 characters per card: block + space)
 				cardX := x + (i * 2)
 				MoveCursor(cardX, y)
-				fmt.Printf("%s%s%s", suitColor, SOLID_BLOCK, Reset) // Use solid block to hide card value
-				
+				fmt.Printf("%s%s%s", suitColor, MEDIUM_SHADE, Reset) // Use medium shade to hide card value
+
 				// Add yellow asterisk under static field cards for AI players
 				if isStatic {
 					MoveCursor(cardX, y+1)
-					fmt.Printf("%s*%s", Yellow, Reset)
+					fmt.Printf("%s*%s", YellowHi, Reset)
 				}
 			} else {
 				// Human player face-down cards
@@ -936,7 +954,7 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticF
 				// Add yellow asterisk under static field cards for human player
 				if isStatic {
 					MoveCursor(cardX+1, y+sl.CardHeight)
-					fmt.Printf("%s*%s", Yellow, Reset)
+					fmt.Printf("%s*%s", YellowHi, Reset)
 				}
 			}
 		} else {
@@ -950,7 +968,7 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticF
 					fmt.Printf("%s*%s", Yellow, Reset)
 				}
 			} else {
-				// Fallback text representation
+				// Fallback text representation - used for AI Static Field cards (visible to all)
 				cardX := x + (i * 4)
 				MoveCursor(cardX, y)
 				fmt.Printf("[%s]", card.String())
@@ -976,6 +994,29 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticF
 			} else {
 				fmt.Printf("%s0%s", Yellow, Reset)
 			}
+		}
+	}
+	
+	// UI Tweak 4: Display "FOLDED!" on last row of AI portraits when player has folded
+	if playerIndex > 0 {
+		player := &game.Players[playerIndex]
+		if player.Folded {
+			// Get portrait position
+			var portraitX, portraitY int
+			switch playerIndex {
+			case 1: // Top-left (PHOOJA)
+				portraitX, portraitY = sl.AIPlayer1X, sl.AIPlayer1Y
+			case 2: // Top-right (ASH-TAAC)
+				portraitX, portraitY = sl.AIPlayer2X, sl.AIPlayer2Y
+			case 3: // Bottom-left (OOLANGA)
+				portraitX, portraitY = sl.AIPlayer3X, sl.AIPlayer3Y
+			case 4: // Bottom-right (KY'ALA)
+				portraitX, portraitY = sl.AIPlayer4X, sl.AIPlayer4Y
+			}
+			
+			// Display " FOLDED! " on last row of portrait (FaceHeight is 6, so y+5 is last row)
+			MoveCursor(portraitX+1, portraitY+5)
+			fmt.Printf("%s FOLDED! %s", RedHi, Reset)
 		}
 	}
 }

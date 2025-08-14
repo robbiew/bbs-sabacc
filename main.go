@@ -205,8 +205,7 @@ func startNewGame() {
 	}
 
 	// Show ante message in game log
-	game.Layout.LogMessage(fmt.Sprintf("All players ante %d credits to each pot", anteAmount), "info")
-	game.Layout.DisplayMessage("Anting credits to pots...", "info", 0)
+	game.Layout.DisplayMessage(fmt.Sprintf("All players ante %d credits to each pot - Anting credits to pots...", anteAmount), "info", 0)
 	time.Sleep(2 * time.Second)
 
 	// DEALING ROUND - Deal 2 cards to each player
@@ -221,8 +220,7 @@ func startNewGame() {
 	}
 
 	// Show dealing completion message in game log
-	game.Layout.LogMessage("Round 1 begins.", "info")
-	game.Layout.DisplayMessage("Game begins...", "info", 0)
+	game.Layout.DisplayMessage("Round 1 begins - Game begins...", "info", 0)
 	time.Sleep(2 * time.Second)
 
 	// Start game loop
@@ -311,8 +309,7 @@ func gameLoop() {
 
 		// Check if maximum rounds reached (Classic Sabacc rule enforcement)
 		if game.Round >= game.MaxRounds {
-			game.Layout.LogMessage(fmt.Sprintf("Maximum rounds (%d) reached! Forcing hand resolution.", game.MaxRounds), "important")
-			game.Layout.DisplayMessage("Max rounds reached - resolving hand!", "warning", 0)
+			game.Layout.DisplayMessage(fmt.Sprintf("Maximum rounds (%d) reached! Forcing hand resolution.", game.MaxRounds), "warning", 0)
 			time.Sleep(2 * time.Second)
 			resolveHand()
 			break
@@ -400,14 +397,12 @@ func handlePlayerBetting() bool {
 			if playerRef.Credits >= betAmount {
 				playerRef.Credits -= betAmount
 				game.HandPot += betAmount
-				game.Layout.LogMessage(fmt.Sprintf("You call %d credits", betAmount), "action")
 				game.Layout.DisplayMessage(fmt.Sprintf("You call %d credits", betAmount), "success", 0)
 			} else {
 				game.Layout.DisplayMessage("Not enough credits to call!", "error", 0)
 				return false
 			}
 		} else {
-			game.Layout.LogMessage("You check (no bet)", "action")
 			game.Layout.DisplayMessage("You check", "info", 0)
 		}
 		time.Sleep(1 * time.Second)
@@ -421,7 +416,6 @@ func handlePlayerBetting() bool {
 			playerRef.Credits -= totalBet
 			game.HandPot += totalBet
 			game.CurrentBet = totalBet // Set new bet amount for other players
-			game.Layout.LogMessage(fmt.Sprintf("You raise to %d", totalBet), "action")
 			game.Layout.DisplayMessage(fmt.Sprintf("You raise to %d", totalBet), "success", 0)
 		} else {
 			game.Layout.DisplayMessage("Not enough credits to raise!", "error", 0)
@@ -434,15 +428,14 @@ func handlePlayerBetting() bool {
 		playerRef.Folded = true
 		playerRef.Credits -= 1 // Fold penalty goes to Sabacc Pot
 		game.SabaccPot += 1
-		game.Layout.LogMessage("You folded (-1 credit penalty)", "important")
-		game.Layout.DisplayMessage("You folded", "warning", 0)
+		game.Layout.DisplayMessage("You folded (-1 credit penalty)", "warning", 0)
 		time.Sleep(2 * time.Second)
 		return false // Player folded, end turn
 
 	default:
-		game.Layout.DisplayMessage("Invalid choice!", "error", 0)
+		game.Layout.DisplayMessage("Invalid choice! Press C/R/F", "error", 0)
 		time.Sleep(1 * time.Second)
-		return true // Try again
+		return handlePlayerBetting() // Loop back for valid input
 	}
 
 	return true // Continue to next phase
@@ -458,31 +451,32 @@ func handlePlayerCall() bool {
 		{'N', "No call (continue)", true},
 	}
 
-	game.Layout.ShowMenu("Call Phase", callOptions, "Call choice: ")
+	game.Layout.ShowCompactMenu(callOptions)
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
 		return false
 	}
 
+	// Clear the compact menu after selection
+	game.Layout.ClearCompactMenu()
+
 	switch char {
 	case 'c', 'C':
 		game.Called = true
-		game.Layout.LogMessage("You called the hand!", "important")
 		game.Layout.DisplayMessage("You called the hand!", "success", 0)
 		time.Sleep(2 * time.Second)
 		return true // Hand was called
 
 	case 'n', 'N':
-		game.Layout.LogMessage("You choose not to call", "action")
 		game.Layout.DisplayMessage("No call", "info", 0)
 		time.Sleep(1 * time.Second)
 		return false // Continue game
 
 	default:
-		game.Layout.DisplayMessage("Invalid choice!", "error", 0)
+		game.Layout.DisplayMessage("Invalid choice! Press C or N", "error", 0)
 		time.Sleep(1 * time.Second)
-		return false
+		return handlePlayerCall() // Loop back for valid input
 	}
 }
 
@@ -516,7 +510,6 @@ func handlePlayerDraw() {
 		if len(game.Deck.Cards) > 0 {
 			card := game.Deck.Deal()
 			playerRef.Hand = append(playerRef.Hand, card)
-			game.Layout.LogMessage("You drew: ["+card.String()+"]", "action")
 			game.Layout.DisplayMessage("You drew: ["+card.String()+"]", "success", 0)
 			time.Sleep(2 * time.Second)
 		} else {
@@ -526,14 +519,15 @@ func handlePlayerDraw() {
 	case 't', 'T':
 		handleTradeCard()
 	case 's', 'S':
-		game.Layout.LogMessage("You stand (no action)", "action")
 		game.Layout.DisplayMessage("You stand.", "info", 0)
 		time.Sleep(1 * time.Second)
 	case 'f', 'F':
 		handleStaticField()
 	default:
-		game.Layout.DisplayMessage("Invalid choice!", "error", 0)
+		game.Layout.DisplayMessage("Invalid choice! Press D/T/S/F", "error", 0)
 		time.Sleep(1 * time.Second)
+		handlePlayerDraw() // Loop back for valid input
+		return
 	}
 }
 
@@ -1374,8 +1368,7 @@ func startAnotherGame() {
 	}
 
 	// Show ante message in game log
-	game.Layout.LogMessage(fmt.Sprintf("All players ante %d credits to each pot", anteAmount), "info")
-	game.Layout.DisplayMessage("New game begins! Anting credits...", "info", 0)
+	game.Layout.DisplayMessage(fmt.Sprintf("New game begins! All players ante %d credits to each pot", anteAmount), "info", 0)
 	time.Sleep(2 * time.Second)
 
 	// DEALING ROUND - Deal 2 cards to each player
@@ -1390,8 +1383,7 @@ func startAnotherGame() {
 	}
 
 	// Show dealing completion message in game log
-	game.Layout.LogMessage("Round 1 begins.", "info")
-	game.Layout.DisplayMessage("Cards dealt. Good luck!", "success", 0)
+	game.Layout.DisplayMessage("Round 1 begins - Cards dealt. Good luck!", "success", 0)
 	time.Sleep(2 * time.Second)
 
 	// Start game loop

@@ -26,17 +26,23 @@
 **Status**: ✅ **FIXED** - Security vulnerability resolved
 **Resolution**: Added `.roo/` to `.gitignore` (2025-08-14)
 
-### � **PRIORITY 1: Game Flow Bug**
+### ✅ **RESOLVED: Game Flow Bug**
 **Issue**: Game ends after 1 round instead of continuing for multiple hands
 **Impact**: Breaks core gameplay loop
 **Location**: [`main.go:gameLoop()`](main.go:232)
 **Status**: Identified, needs fixing
 
-### 🟡 **PRIORITY 2: UI Polish Issues**
-**Issue**: Various layout problems, portrait duplication
-**Impact**: Poor user experience
-**Locations**: [`ui.go`](ui.go), [`portraits.go`](portraits.go)
-**Status**: Multiple small fixes needed
+### 🟡 **PRIORITY 2: UI Polish Issues & Specific Tweaks**
+**Issue**: Various layout problems, portrait duplication, and specific UI improvements needed
+**Impact**: Poor user experience and inconsistent visual presentation
+**Locations**: [`ui.go`](ui.go), [`portraits.go`](portraits.go), [`cards.go`](cards.go)
+**Status**: Multiple fixes needed + 4 priority UI tweaks identified
+
+**Priority UI Tweaks Added**:
+1. Add CP437 horizontal line (`─`) underneath each AI player name
+2. Right-justify AI player credits ($XXX) for proper spacing
+3. Fix Static Field menus to single-row compact format
+4. Display " FOLDED! " on last row of AI portraits when players fold
 
 ### 🟢 **PRIORITY 3: Missing Features**
 **Issue**: Leaderboards, persistent stats, advanced betting

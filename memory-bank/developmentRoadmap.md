@@ -38,16 +38,22 @@
 *Target: 2-4 weeks after Phase 1*
 
 ### P2-A: Screen Layout Improvements
-**Issues**: Various positioning and display problems  
-**Locations**: [`ui.go`](ui.go) screen rendering functions  
-**Impact**: ⭐⭐⭐ (User experience)  
-**Effort**: 🔧🔧🔧 (High)  
+**Issues**: Various positioning and display problems
+**Locations**: [`ui.go`](ui.go) screen rendering functions
+**Impact**: ⭐⭐⭐ (User experience)
+**Effort**: 🔧🔧🔧 (High)
 
-**Key Areas**:
-- Card positioning consistency
-- Menu alignment and clarity  
-- Status bar information display
-- Game log message wrapping
+**Priority UI Tweaks**:
+1. **AI Player Name Separators**: Add CP437 horizontal line (`─`) underneath each AI player name, shifting card display and static fields down one line
+2. **AI Credits Right Justification**: Right-justify AI player credits (`$XXX`) to create proper spacing from player names
+3. **Static Field Menu Consistency**: Fix Static Field menus to display on single row like other compact menus
+4. **Folded Player Indicator**: Display " FOLDED! " on the last row of AI player portraits when they fold
+
+**Additional Areas**:
+- Card positioning consistency across all players
+- Menu alignment and clarity improvements
+- Status bar information display optimization
+- Game log message wrapping enhancements
 
 ### P2-B: Enhanced Card Graphics
 **Goal**: Improve visual card representation  
