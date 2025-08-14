@@ -1,173 +1,120 @@
-```                                                                              
-BBS SABACC - Classic 77-Card Sabacc for Bulletin Board Systems  
-                                                                              
-[█] Authentic 1989 West End Games Rules [█]
-[█] ANSI Color Terminal Support         [█] 
-[█] Linux-based BBS Compatibility       [█]
-[█] 4 AI Players and 1 Human Player     [█]
-```
+# 🎮 BBS Sabacc
 
-## ⚠️ DEVELOPMENT STATUS ⚠️
+> **"Never tell me the odds!"** - Classic Star Wars Sabacc card game for Bulletin Board Systems
 
-**🚧 This game is currently under active development! 🚧**
+![BBS Sabacc](assets/sabacc-ui-preview.png)
 
-While the core Sabacc gameplay mechanics are implemented and functional, there is still significant work to be done on:
+[![Go Version](https://img.shields.io/badge/Go-1.19+-00ADD8?style=flat&logo=go)](https://golang.org/)
+[![BBS Compatible](https://img.shields.io/badge/BBS-Compatible-green?style=flat)](https://en.wikipedia.org/wiki/Bulletin_board_system)
+[![License](https://img.shields.io/badge/License-Open_Source-blue?style=flat)](LICENSE)
+[![Development Status](https://img.shields.io/badge/Status-Active_Development-orange?style=flat)](https://github.com/robbiew/bbs-sabacc)
 
-- **User Interface & Experience**: Screen layouts, ANSI art integration, menu systems
-- **Gameplay Features**: Turns, rules, enhanced AI strategies  
-- **Player Statistics**: Persistent stat tracking, leaderboards, achievement system
-- **Configuration**: Advanced game settings, difficulty levels, economy balancing
-- **Polish & Testing**: Bug fixes, performance optimization, extensive BBS testing
+## ✨ Features
 
----
+- 🃏 **Authentic 1989 West End Games Rules** - The original Classic Sabacc experience
+- 🎨 **ANSI Terminal Graphics** - Beautiful CP437 card art and UI
+- 🤖 **Smart AI Opponents** - 4 AI players with configurable personalities  
+- 🏛️ **BBS Integration** - Full door32.sys support for all major BBS systems
+- ⚡ **Sabacc Shifts** - Unpredictable card reshuffling adds excitement
+- 🛡️ **Static Field** - Protect your cards from Sabacc Shifts
+- 📊 **Statistics Tracking** - Win/loss records and achievements
 
-# Overview
+## 🚀 Quick Start
 
-**"Never tell me the odds!"** - Step into the smoky cantinas of the Outer Rim and experience the most notorious card game in the galaxy! 
-
-Sabacc is the legendary gambling game that Han Solo played to win the *Millennium Falcon* from Lando Calrissian in the Cloud City. This authentic implementation brings the 1989 West End Games Classic Sabacc rules to your BBS, complete with all the excitement, strategy, and unpredictable Sabacc Shifts that make this game a galactic favorite.
-
-## ⭐ What is Sabacc? ⭐
-
-In the Star Wars universe, Sabacc is a high-stakes card game played in cantinas, gambling halls, and starship lounges across the galaxy. Players risk their credits (and sometimes their ships!) trying to achieve the perfect hand of exactly **23 points** - known as "Pure Sabacc" - while avoiding the dreaded "bomb out" that could cost them everything.
-
-But beware the **Sabacc Shift**! At any moment, the mystical interferometer field can scramble all cards not protected in the Static Field, turning victory into defeat in the roll of the dice. Only the most cunning players survive long enough to master this game of skill, luck, and nerves.
-
----
-
-
-# BBS Sabacc Installation Guide
-
-This guide will help you install and configure BBS Sabacc on your BBS system.
-
-## Prerequisites
-
-- Linux-based BBS system (Talisman, Mystic, Synchronet, ENiGMA½, WWIV)
-- Go 1.19 or later (for building from source)
+### Prerequisites
+- Linux-based BBS system (Mystic, Synchronet, Talisman, ENiGMA½, WWIV)
+- Go 1.19+ (for building from source)
 - ANSI terminal support
-- door32.sys drop file support
 
-## Installation Methods
-
-### Method 1: Build from Source (Recommended)
-
-1. **Download or clone the source code**
-2. **Navigate to the source directory:**
-   ```bash
-   cd bbs-sabacc
-   ```
-3. **Build the card database:**
-   ```bash
-   # Generate the card database (required first step)
-   go run cmd/build-cards/main.go
-   
-   # This creates sabacc_cards.bin containing the 77-card Sabacc deck
-   
-   ```
-
-4. **Build the game:**
-   ```bash
-   # Quick build
-   go build -o sabacc .
-   
-   # Optimized build (smaller executable)
-   go build -ldflags="-s -w" -o sabacc .
-   
-   # Or use the build script
-   chmod +x build.sh
-   ./build.sh
-   ```
-
-
-### Method 2: Pre-built Binary (if available)
-
-1. Download the appropriate binary for your architecture
-2. Extract and copy to your doors directory:
-   ```bash
-   cp sabacc /path/to/your/bbs/doors/
-   chmod +x /path/to/your/bbs/doors/sabacc
-   ```
-
-## BBS Configuration
-
-"-path" is the only required parameter. Only Door32.sys is supported.
+### Installation
 
 ```bash
+# Clone and build
+git clone https://github.com/robbiew/bbs-sabacc.git
+cd bbs-sabacc
+
+# Generate card database (required)
+go run cmd/build-cards/main.go
+
+# Build the game
+go build -ldflags="-s -w" -o sabacc .
+```
+
+### BBS Configuration
+
+```bash
+# Run as BBS door game
 ./sabacc -path /path/to/drop_file_dir/
 ```
 
-## Directory Structure
+## 🎯 Game Rules
 
-Organize your installation as follows:
+**Objective**: Get exactly **23 points** (Pure Sabacc) or the highest total ≤ 23
+
+- **76-card deck**: 60 numbered cards + 16 Arcana cards
+- **Bomb conditions**: >23, <-23, or exactly 0 points
+- **Special hands**: Pure Sabacc (23), Idiot's Array (Idiot+2+3)
+- **Sabacc Shifts**: Cards can be reshuffled randomly during play
+
+## 📁 Directory Structure
 
 ```
 /path/to/doors/sabacc/
-├── sabacc              # Main executable (required)
-├── sabacc_cards.bin    # Card database (required)
-├── sabacc.conf         # Configuration file (auto-generated, editable)
+├── sabacc              # Main executable
+├── sabacc_cards.bin    # Card graphics database
+├── sabacc.conf         # Game configuration
 └── ansi/
-    └── portraits.ans   # AI player portraits (make your own!)
-
+    └── portraits.ans   # AI player portraits
 ```
 
-## Configuration
+## ⚠️ Development Status
 
-### BBS Sabacc Portrait System
+**🚧 Active Development** - Core gameplay is functional but under active improvement:
 
-The BBS Sabacc game features a simple ANSI-based portrait system for AI players.
+- ✅ Complete Classic Sabacc rule implementation
+- ✅ BBS integration with door32.sys support
+- ✅ Smart AI opponents with strategic decision-making
+- 🔄 UI polish and layout improvements in progress
+- 🔄 Enhanced features and statistics system planned
 
-#### Portrait Specifications
+## 🤝 Contributing
 
-- **Dimensions**: Exactly 9 columns × 6 rows
-- **Format**: Single stacked ANSI (.ans) file - `ansi/portraits.ans`
-- **Layout**: Portraits stacked vertically in a single file (6 rows each)
-- **Default**: Included `ansi/portraits.ans` with character portraits
-- **Randomization**: Different portraits selected each game session
+This project welcomes contributions! See [`memory-bank/README.md`](memory-bank/README.md) for detailed development context and architecture documentation.
+
+**Priority Issues:**
+- Game loop continuity (currently ends after 1 round)
+- AI portrait randomization improvements
+- UI layout consistency enhancements
+
+## 📚 Documentation
+
+- **[Memory Bank](memory-bank/README.md)** - Complete development documentation
+- **[Architecture Overview](memory-bank/architectureOverview.md)** - System design and diagrams
+- **[Known Issues](memory-bank/knownIssues.md)** - Current bugs and technical debt
+- **[Development Roadmap](memory-bank/developmentRoadmap.md)** - Future plans and priorities
+
+## ⚖️ Game Configuration
+
+The game auto-generates `sabacc.conf` with customizable settings:
+- Starting credits and betting limits
+- AI personality types (conservative, balanced, aggressive)  
+- Sabacc Shift probability
+- Idle timeout values
+
+## 🎮 BBS Systems Supported
+
+- **Mystic BBS** - Full compatibility
+- **Synchronet** - Full compatibility  
+- **Talisman** - Full compatibility
+- **ENiGMA½** - Full compatibility
+- **WWIV** - Full compatibility
 
 ---
 
-### Game Settings (sabacc.conf)
+<div align="center">
 
-The game automatically creates a `sabacc.conf` file on first run with these default settings:
+**🌟 Experience the galaxy's most notorious card game! 🌟**
 
-```json
-{
-  "min_ante": 10,
-  "max_ante": 100,
-  "max_bet": 500,
-  "starting_credits": 1000,
-  "shift_probability": 6,
-  "min_rounds_to_call": 2,
-  "idle_timeout_seconds": 300,
-  "enable_statistics": true,
-  "ai_personality": "balanced"
-}
-```
+*Step into the cantina and test your luck against the galaxy's craftiest players...*
 
-You can edit this file to customize the game behavior:
-
-- **min_ante**: Minimum ante required (both pots)
-- **max_ante**: Maximum ante allowed  
-- **max_bet**: Maximum betting limit
-- **starting_credits**: Credits each player starts with
-- **shift_probability**: Dice roll probability (1 in X chance)
-- **min_rounds_to_call**: Minimum rounds before calling allowed
-- **idle_timeout_seconds**: Player idle timeout in seconds
-- **enable_statistics**: Track player statistics
-- **ai_personality**: AI behavior ("conservative", "balanced", "aggressive")
-
-
-## TODO
-- Game is over after 1 round. Fix this.
-- Fix duplication of AI Player Portraits
-- Create Satr Wars Name Generator for AI Players
-- Various UI/layout issues
-- Better ANSI art for key moments (title, portraits, etc.)
-- Congifurable bet amounts
-- "All in" moments, drop keys to the Millenium Falcon, etc.
-- Leaderboard
-- Persistant winnings/losses (reset every X days)
-- Get a loan from Jabba
-
-
-
+</div>
