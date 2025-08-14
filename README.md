@@ -2,7 +2,7 @@
 
 > **"Never tell me the odds!"** - Classic Star Wars Sabacc card game for Bulletin Board Systems
 
-![BBS Sabacc](assets/sabacc-ui-preview.png)
+<img src="assets/sabacc-ui-preview.png" alt="BBS Sabacc" width="100%">
 
 [![Go Version](https://img.shields.io/badge/Go-1.19+-00ADD8?style=flat&logo=go)](https://golang.org/)
 [![BBS Compatible](https://img.shields.io/badge/BBS-Compatible-green?style=flat)](https://en.wikipedia.org/wiki/Bulletin_board_system)
