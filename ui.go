@@ -947,13 +947,13 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticF
 				}
 			} else {
 				// Human player face-down cards
-				cardX := x + (i * 4) // Keep original spacing for human cards
+				cardX := x + (i * 7) // Card width (6) + 1 blank space = 7
 				MoveCursor(cardX, y)
 				fmt.Printf("%s%s%s%s", Yellow, SOLID_BLOCK, SOLID_BLOCK, Reset)
 				
 				// Add yellow asterisk under static field cards for human player
 				if isStatic {
-					MoveCursor(cardX+1, y+sl.CardHeight)
+					MoveCursor(cardX+1, y+sl.CardHeight) // Center under 2-wide face-down card
 					fmt.Printf("%s*%s", YellowHi, Reset)
 				}
 			}
@@ -961,15 +961,15 @@ func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticF
 			// Show actual card for human player
 			if renderer != nil && playerIndex == 0 {
 				// Render card row by row with proper cursor positioning
-				cardX := x + (i * 4) // Keep original spacing for human cards
+				cardX := x + (i * 7) // Card width (6) + 1 blank space = 7
 				sl.renderCardAtPosition(cardX, y, card, renderer)
 				if isStatic {
-					MoveCursor(cardX+2, y+sl.CardHeight)
+					MoveCursor(cardX+3, y+sl.CardHeight) // Center asterisk under 6-wide card (position 3)
 					fmt.Printf("%s*%s", Yellow, Reset)
 				}
 			} else {
 				// Fallback text representation - used for AI Static Field cards (visible to all)
-				cardX := x + (i * 4)
+				cardX := x + (i * 7) // Card width (6) + 1 blank space = 7
 				MoveCursor(cardX, y)
 				fmt.Printf("[%s]", card.String())
 				if isStatic {
