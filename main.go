@@ -40,6 +40,7 @@ type SabaccGame struct {
 	Called        bool
 	GameOver      bool
 	MinRounds     int           // Minimum rounds before calling allowed
+	MaxRounds     int           // Maximum rounds before forced resolution
 	BettingPhase  bool          // True during betting, false during play
 	ShiftOccurred bool          // Track if shift happened this turn
 	Layout        *ScreenLayout // Persistent UI system
@@ -102,6 +103,7 @@ func main() {
 		Turn:         0,
 		Dealer:       0,
 		MinRounds:    config.MinRoundsToCall,    // From configuration
+		MaxRounds:    config.MaxRounds,          // From configuration
 		Layout:       NewScreenLayout(u.W, u.H), // Initialize persistent UI
 	}
 
@@ -307,12 +309,32 @@ func gameLoop() {
 			break
 		}
 
+		// Check if maximum rounds reached (Classic Sabacc rule enforcement)
+		if game.Round >= game.MaxRounds {
+			game.Layout.LogMessage(fmt.Sprintf("Maximum rounds (%d) reached! Forcing hand resolution.", game.MaxRounds), "important")
+			game.Layout.DisplayMessage("Max rounds reached - resolving hand!", "warning", 0)
+			time.Sleep(2 * time.Second)
+			resolveHand()
+			break
+		}
+
 		nextTurn()
 	}
 
-	// Show results and return to menu
+	// Show results and prompt for another game
 	showGameResults()
-	waitForKey()
+	
+	// Prompt for another game
+	for {
+		if promptForAnotherGame() {
+			// Start another game with current credit amounts
+			startAnotherGame()
+			// After the new game ends, we'll loop back to prompt again
+		} else {
+			// User chose not to play another game, return to main menu
+			return
+		}
+	}
 }
 
 // Updated handlePlayerTurn function using Classic Sabacc 4-phase turn structure
@@ -515,6 +537,16 @@ func handlePlayerDraw() {
 	}
 }
 
+// getAIDelay returns appropriate delay for AI actions based on game state
+func getAIDelay() time.Duration {
+	// If human player has folded, use much shorter delays for faster resolution
+	if len(game.Players) > 0 && game.Players[0].Folded {
+		return 200 * time.Millisecond // Very fast when human folded
+	}
+	// Normal delay when human is still playing
+	return 1 * time.Second
+}
+
 func handleComputerTurn() {
 	computer := &game.Players[game.Turn]
 
@@ -523,7 +555,7 @@ func handleComputerTurn() {
 	}
 
 	game.Layout.LogMessage(computer.Name+" is thinking... ", "info")
-	time.Sleep(1 * time.Second)
+	time.Sleep(getAIDelay())
 
 	// PHASE 1: BETTING PHASE (Classic Sabacc AI)
 	if !handleComputerBetting(game.Turn) {
@@ -663,7 +695,7 @@ func handleComputerBetting(playerIndex int) bool {
 		}
 	}
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(getAIDelay())
 	return true
 }
 
@@ -677,7 +709,7 @@ func handleComputerCall(playerIndex int) bool {
 	if shouldCall {
 		game.Called = true
 		game.Layout.LogMessage(computer.Name+" calls the hand!", "important")
-		time.Sleep(2 * time.Second)
+		time.Sleep(getAIDelay())
 		return true
 	}
 
@@ -1273,5 +1305,95 @@ func showGameResults() {
 		fmt.Printf("%s: %s%d%s credits\r\n", playerData.Name, YellowHi, playerData.Credits, Reset)
 	}
 	fmt.Println()
-	fmt.Print(Yellow + "Press any key to return to menu..." + Reset)
+	fmt.Print(Yellow + "Press any key to continue..." + Reset)
+	waitForKey()
+}
+
+func promptForAnotherGame() bool {
+	fmt.Printf("\r\n%sPlay another game?%s\r\n", CyanHi, Reset)
+	fmt.Printf("%s[%sY%s]%s Yes    %s[%sN%s]%s No (return to menu)\r\n\r\n", 
+		Yellow, YellowHi, Reset, Yellow, Yellow, YellowHi, Reset, Yellow)
+	fmt.Print(Green + "Choice: " + Reset)
+
+	char, key, err := getKeyWithTimeout()
+	if err != nil {
+		return false
+	}
+
+	switch {
+	case char == 'y' || char == 'Y':
+		return true
+	case char == 'n' || char == 'N' || key == keyboard.KeyEsc:
+		return false
+	default:
+		return promptForAnotherGame() // Ask again for invalid input
+	}
+}
+
+func startAnotherGame() {
+	// Initialize the persistent UI layout
+	game.Layout.InitializeScreen()
+
+	// Initialize deck (76 cards)
+	game.Deck = NewDeck()
+	game.Deck.Shuffle()
+
+	// Reset game state but preserve credits
+	game.Round = 0
+	game.Turn = 0 // Start with human player so they can see Check option
+	game.Dealer = 0
+	game.Called = false
+	game.GameOver = false
+	game.BettingPhase = false
+	game.ShiftOccurred = false
+	game.CurrentBet = 0 // Reset current bet to 0 for new game
+
+	// Clear hands and reset game state for each player while preserving credits
+	for i := range game.Players {
+		game.Players[i].Hand = []Card{}
+		game.Players[i].StaticField = []Card{}
+		game.Players[i].Folded = false
+		game.Players[i].BombedOut = false
+		game.Players[i].HasActed = false
+		
+		// Check if any player has insufficient credits to continue
+		if game.Players[i].Credits < config.MinAnte*2 {
+			// Give minimum credits to continue playing
+			game.Players[i].Credits = config.MinAnte * 10
+		}
+	}
+
+	// ANTE PHASE - Both players ante into both pots
+	anteAmount := config.MinAnte
+	game.HandPot = anteAmount * len(game.Players)
+	game.SabaccPot = anteAmount * len(game.Players)
+
+	// Deduct ante from players
+	for i := range game.Players {
+		game.Players[i].Credits -= anteAmount * 2 // Ante goes to both pots
+	}
+
+	// Show ante message in game log
+	game.Layout.LogMessage(fmt.Sprintf("All players ante %d credits to each pot", anteAmount), "info")
+	game.Layout.DisplayMessage("New game begins! Anting credits...", "info", 0)
+	time.Sleep(2 * time.Second)
+
+	// DEALING ROUND - Deal 2 cards to each player
+	game.Layout.LogMessage("Dealing 2 cards.", "info")
+	for i := 0; i < 2; i++ {
+		for j := range game.Players {
+			if len(game.Deck.Cards) > 0 {
+				card := game.Deck.Deal()
+				game.Players[j].Hand = append(game.Players[j].Hand, card)
+			}
+		}
+	}
+
+	// Show dealing completion message in game log
+	game.Layout.LogMessage("Round 1 begins.", "info")
+	game.Layout.DisplayMessage("Cards dealt. Good luck!", "success", 0)
+	time.Sleep(2 * time.Second)
+
+	// Start game loop
+	gameLoop()
 }

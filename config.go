@@ -16,6 +16,7 @@ type GameConfig struct {
 	StartingCredits  int    `json:"starting_credits"`
 	ShiftProbability int    `json:"shift_probability"` // 1 in X chance
 	MinRoundsToCall  int    `json:"min_rounds_to_call"`
+	MaxRounds        int    `json:"max_rounds"`         // Maximum rounds before forced resolution
 	IdleTimeout      int    `json:"idle_timeout_seconds"`
 	EnableStatistics bool   `json:"enable_statistics"`
 	AIPersonality    string `json:"ai_personality"` // "conservative", "aggressive", "balanced"
@@ -44,7 +45,8 @@ func DefaultConfig() GameConfig {
 		MaxBet:           500,
 		StartingCredits:  1000,
 		ShiftProbability: 6, // 1 in 6 chance
-		MinRoundsToCall:  2,
+		MinRoundsToCall:  1, // Classic sabacc allows calling after round 1
+		MaxRounds:        4, // Classic sabacc maximum rounds before forced resolution
 		IdleTimeout:      300, // 5 minutes
 		EnableStatistics: true,
 		AIPersonality:    "balanced",
@@ -183,6 +185,12 @@ func ValidateConfig(config *GameConfig) {
 	}
 	if config.MinRoundsToCall < 1 {
 		config.MinRoundsToCall = 1
+	}
+	if config.MaxRounds < config.MinRoundsToCall {
+		config.MaxRounds = config.MinRoundsToCall + 1
+	}
+	if config.MaxRounds > 10 { // Reasonable upper limit
+		config.MaxRounds = 10
 	}
 	if config.IdleTimeout < 60 {
 		config.IdleTimeout = 60

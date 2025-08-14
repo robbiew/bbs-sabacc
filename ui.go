@@ -48,10 +48,6 @@ type ScreenLayout struct {
 	HumanPlayerY int
 	HumanNameY   int // Player name/info line
 
-	// Turn indicator area
-	TurnIndicatorX int
-	TurnIndicatorY int
-
 	// Pot info area  
 	PotInfoX int
 	PotInfoY int
@@ -121,16 +117,13 @@ func NewScreenLayout(termW, termH int) *ScreenLayout {
 		GameLogX: 28,
 		GameLogY: 5,
 		GameLogW: 25, // Fixed width to match reference file
-		GameLogH: 7,  
+		GameLogH: 9,  
 
 		// Human player area (bottom center - fixed for 79x24)
 		HumanPlayerX: fixedW/2 - 15,
-		HumanPlayerY: 17, // Move higher to give space for cards above menu
-		HumanNameY:   15,
+		HumanPlayerY: 18, // Move higher to give space for cards above menu
+		HumanNameY:   16,
 
-		// Turn indicator (below game log)
-		TurnIndicatorX: 4,
-		TurnIndicatorY: 19,
 
 		// Pot info area 
 		PotInfoX: 2,
@@ -148,8 +141,8 @@ func NewScreenLayout(termW, termH int) *ScreenLayout {
 		CardWidth:   6,                 // card width (matches card database)
 		CardHeight:  5,                 // card height 
 		MaxCardsRow: 8,                 // card row limit 
-		FaceWidth:   portraitWidth + 2, // Portrait width + 2 for borders (9+2=11)
-		FaceHeight:  portraitHeight,    // Portrait height (6 rows)
+		FaceWidth:   9 + 2, // Portrait width + 2 for borders (9+2=11)  
+		FaceHeight:  6,     // Portrait height (6 rows)
 	}
 
 	// Initialize game log with proper dimensions
@@ -450,11 +443,14 @@ func (sl *ScreenLayout) drawAIPlayerAreas() {
 		sl.drawSimpleFaceArt(player.x, player.y, i)
 
 		// Draw player name and credits  
+		portraitWidth := sl.FaceWidth - 2 // FaceWidth includes +2 for borders, so subtract for actual portrait
+		nameOffset := 16 // Standard offset for right-side player names
+		
 		if player.isLeft {
 			MoveCursor(player.x+portraitWidth+1, player.y)
 		} else {
-			// Right side players: use same fixed 16-column positioning as UpdatePlayerInfo
-			MoveCursor(player.x-16, player.y)
+			// Right side players: use same positioning as UpdatePlayerInfo
+			MoveCursor(player.x-nameOffset, player.y)
 		}
 		fmt.Printf("%s%s%s", CyanHi, player.name, Reset)
 	}
@@ -485,10 +481,7 @@ func (sl *ScreenLayout) drawGameLogBorder() {
 
 // UpdateHeader updates the turn indicator and game status
 func (sl *ScreenLayout) UpdateHeader(round, handPot, sabaccPot, deckSize int, currentPlayer string) {
-	// Update turn indicator
-	sl.drawTurnIndicator(currentPlayer)
-
-	// Update AI player borders based on current turn
+	// Update AI player borders based on current turn (this handles turn indication)
 	sl.updateAIPlayerBorders(currentPlayer)
 
 	// Update pot info
@@ -526,19 +519,6 @@ func (sl *ScreenLayout) updateAIPlayerBorders(currentPlayer string) {
 	}
 }
 
-func (sl *ScreenLayout) drawTurnIndicator(currentPlayer string) {
-	// Position turn indicator in a safe area - above the human player name
-	MoveCursor(25, 14)
-	fmt.Print(strings.Repeat(" ", 40)) // Clear wider area
-	MoveCursor(25, 14)
-	if currentPlayer == "Human" || currentPlayer == "" {
-		fmt.Printf("%s\x10 YOUR TURN \x11%s", YellowHi, Reset)
-	} else {
-		// Extract just the player name (before any space or status text)
-		playerName := strings.Fields(currentPlayer)[0]
-		fmt.Printf("%s\x10 %s'S TURN \x11%s", YellowHi, strings.ToUpper(playerName), Reset)
-	}
-}
 
 func (sl *ScreenLayout) drawPotInfo(gamePot, sabaccPot, sidePot int) {
 	// Use the new helper function with embedded positioning
@@ -556,58 +536,36 @@ func (sl *ScreenLayout) UpdateStatusLine(round, handPot, sabaccPot, deckSize int
 // UpdatePlayerInfo updates a player's name, credits, and total for new layout
 func (sl *ScreenLayout) UpdatePlayerInfo(playerIndex int, name string, credits, total int, showTotal bool) {
 	switch playerIndex {
-	case 0: // Human player (bottom center)
-		MoveCursor(sl.HumanPlayerX, sl.HumanNameY)
-		fmt.Print(EraseLine)
-		if showTotal {
-			fmt.Printf("%s%s%s - Total: %s Credits: %d",
-				GreenHi, name, Reset, displayHandValue(total), credits)
-		} else {
-			fmt.Printf("%s%s%s - Credits: %d", GreenHi, name, Reset, credits)
-		}
+	case 0: // Human player (bottom center) - Cyan bar with centered text and fade effects
+		// Draw cyan background bar with fade-out effects at ends
+		sl.drawPlayerBar(name, credits, total, showTotal)
 	case 1, 2, 3, 4: // AI players (corners) - update name and credits on same line
 		var x, y int
-		var isLeft bool
+		
+		// Use ScreenLayout variables for consistent positioning
+		portraitWidth := sl.FaceWidth - 2 // FaceWidth includes +2 for borders, so subtract for actual portrait
+		nameOffset := 16 // Standard offset for right-side player names
+		
 		switch playerIndex {
 		case 1: // Top-left (PHOOJA)
 			x, y = sl.AIPlayer1X+portraitWidth+1, sl.AIPlayer1Y
-			isLeft = true
 		case 2: // Top-right (ASH-TAAC)  
-			x, y = sl.AIPlayer2X, sl.AIPlayer2Y
-			isLeft = false
+			x, y = sl.AIPlayer2X-nameOffset, sl.AIPlayer2Y
 		case 3: // Bottom-left (OOLANGA)
 			x, y = sl.AIPlayer3X+portraitWidth+1, sl.AIPlayer3Y
-			isLeft = true
 		case 4: // Bottom-right (KY'ALA)
-			x, y = sl.AIPlayer4X, sl.AIPlayer4Y
-			isLeft = false
+			x, y = sl.AIPlayer4X-nameOffset, sl.AIPlayer4Y
 		}
 		
-		if isLeft {
-			// Left side players: name followed by credits
-			// Calculate exact space needed: name + space + $ + digits
-			creditsText := fmt.Sprintf("$%d", credits)
-			totalLength := len(name) + 1 + len(creditsText)
-			
-			// Clear only the exact space needed
-			MoveCursor(x, y)
-			fmt.Print(strings.Repeat(" ", totalLength))
-			MoveCursor(x, y)
-			fmt.Printf("%s%s %s%s%s", CyanHi, name, Yellow, creditsText, Reset)
-		} else {
-			// Right side players: name followed by credits, left-aligned at fixed position
-			textX := x - 16  // Fixed 16 columns to the left of portrait
-			
-			// Calculate exact space needed: name + space + $ + digits
-			creditsText := fmt.Sprintf("$%d", credits)
-			totalLength := len(name) + 1 + len(creditsText)
-			
-			// Clear only the exact space needed
-			MoveCursor(textX, y)
-			fmt.Print(strings.Repeat(" ", totalLength))
-			MoveCursor(textX, y)
-			fmt.Printf("%s%s %s%s%s", CyanHi, name, Yellow, creditsText, Reset)
-		}
+		// Calculate exact space needed: name + space + $ + digits
+		creditsText := fmt.Sprintf("$%d", credits)
+		totalLength := len(name) + 1 + len(creditsText)
+		
+		// Clear only the exact space needed
+		MoveCursor(x, y)
+		fmt.Print(strings.Repeat(" ", totalLength))
+		MoveCursor(x, y)
+		fmt.Printf("%s%s %s%s%s", CyanHi, name, Yellow, creditsText, Reset)
 	}
 }
 
@@ -621,15 +579,19 @@ func (sl *ScreenLayout) ClearPlayerArea(playerIndex int) {
 		}
 	case 1, 2, 3, 4: // AI players - clear card areas next to portraits under names
 		var x, y int
+		// Use ScreenLayout variables for consistent positioning
+		portraitWidth := sl.FaceWidth - 2 // FaceWidth includes +2 for borders, so subtract for actual portrait
+		nameOffset := 16 // Standard offset for right-side player names
+		
 		switch playerIndex {
 		case 1: // AI 1 - Top-left, cards next to portrait under name
 			x, y = sl.AIPlayer1X+portraitWidth+1, sl.AIPlayer1Y+1
 		case 2: // AI 2 - Top-right, cards left of portrait under name  
-			x, y = sl.AIPlayer2X-16, sl.AIPlayer2Y+1
+			x, y = sl.AIPlayer2X-nameOffset, sl.AIPlayer2Y+1
 		case 3: // AI 3 - Bottom-left, cards next to portrait under name
 			x, y = sl.AIPlayer3X+portraitWidth+1, sl.AIPlayer3Y+1
 		case 4: // AI 4 - Bottom-right, cards left of portrait under name
-			x, y = sl.AIPlayer4X-16, sl.AIPlayer4Y+1
+			x, y = sl.AIPlayer4X-nameOffset, sl.AIPlayer4Y+1
 		}
 		// Clear AI card area with proper width for card display (max 15 columns)
 		MoveCursor(x, y)
@@ -737,7 +699,7 @@ func (sl *ScreenLayout) ShowAIPlayerBorder(playerIndex int) {
 		PrintAnsiLoc(PortraitBorder, x, y-1) // Position above portrait
 	} else {
 		// Code-generated bright green half-block border (top only)
-		borderWidth := portraitWidth // 9 characters wide to match portrait
+		borderWidth := sl.FaceWidth - 2 // 9 characters wide to match portrait
 		
 		// Top border only (row above portrait)
 		MoveCursor(x, y-1)
@@ -765,7 +727,7 @@ func (sl *ScreenLayout) ClearAIPlayerBorder(playerIndex int) {
 		return
 	}
 
-	borderWidth := portraitWidth // 9 characters wide to match portrait
+	borderWidth := sl.FaceWidth - 2 // 9 characters wide to match portrait
 	
 	// Clear top border only (row above portrait)
 	MoveCursor(x, y-1)
@@ -779,6 +741,66 @@ func (sl *ScreenLayout) ClearAllAIPlayerBorders() {
 	}
 }
 
+
+// drawPlayerBar creates the cyan player bar with centered text and fade-out effects
+func (sl *ScreenLayout) drawPlayerBar(name string, credits, total int, showTotal bool) {
+	barY := sl.HumanNameY
+	barWidth := sl.TerminalW - 6 // Leave space for fade blocks (3 on each side)
+	fadeStartX := 1
+	barStartX := fadeStartX + 3
+	barEndX := barStartX + barWidth
+	fadeEndX := barEndX
+
+	// Build the plain text first for accurate length calculation
+	var plainText string
+	if showTotal {
+		totalDisplay := displayHandValue(total)
+		plainTextTotal := stripANSI(totalDisplay) // Strip ANSI from total display
+		plainText = fmt.Sprintf("%s - Total: %s Credits: %d", name, plainTextTotal, credits)
+	} else {
+		plainText = fmt.Sprintf("%s - Credits: %d", name, credits)
+	}
+
+	// Calculate centering position using plain text length
+	textStartX := barStartX + (barWidth-len(plainText))/2
+
+	// Clear only the specific bar area where we'll draw the player bar
+	MoveCursor(fadeStartX, barY)
+	totalBarWidth := 3 + barWidth + 3 // fade blocks + bar + fade blocks
+	fmt.Print(strings.Repeat(" ", totalBarWidth)) // Clear only the bar area
+
+	// Draw left fade-out blocks (light to dark shades)
+	MoveCursor(fadeStartX, barY)
+	fmt.Printf("%s%s%s%s%s%s", 
+		Cyan, BgBlack, LIGHT_SHADE,  // Light cyan block (closest to center)
+		MEDIUM_SHADE,                // Medium cyan block  
+		DARK_SHADE,                  // Darkest cyan block (furthest from center)
+		Reset)
+
+	// Draw main cyan background bar
+	MoveCursor(barStartX, barY)
+	fmt.Printf("\x1b[30;46m%s\x1b[0m", strings.Repeat(" ", barWidth)) // Black text on cyan background
+
+	// Draw the centered player text with proper formatting
+	MoveCursor(textStartX, barY)
+	if showTotal {
+		totalDisplay := displayHandValue(total)
+		plainTextTotal := stripANSI(totalDisplay) // Get plain text version of total
+		// Format: name (black on cyan) - Total: (black on cyan) totalValue (bright white on cyan) Credits: credits (black on cyan)
+		fmt.Printf("\x1b[30;46m%s - Total: \x1b[1;37;46m%s \x1b[30;46mCredits: %d\x1b[0m", 
+			name, plainTextTotal, credits)
+	} else {
+		fmt.Printf("\x1b[30;46m%s - Credits: %d\x1b[0m", name, credits)
+	}
+
+	// Draw right fade-out blocks (light to dark shades)
+	MoveCursor(fadeEndX, barY)
+	fmt.Printf("%s%s%s%s%s%s", 
+		Cyan, BgBlack, LIGHT_SHADE,  // Light cyan block (closest to center)
+		MEDIUM_SHADE,                // Medium cyan block
+		DARK_SHADE,                  // Darkest cyan block (furthest from center)
+		Reset)
+}
 
 // LogMessage adds a message to the game log
 func (sl *ScreenLayout) LogMessage(message, msgType string) {
@@ -850,17 +872,21 @@ func (sl *ScreenLayout) RefreshGameLog() {
 func (sl *ScreenLayout) RenderPlayerCards(playerIndex int, cards []Card, staticField []Card, faceDown bool, renderer *CardRenderer, round, deckSize, handPot, sabaccPot int) {
 	var x, y int
 
+	// Use ScreenLayout variables for consistent positioning
+	portraitWidth := sl.FaceWidth - 2 // FaceWidth includes +2 for borders, so subtract for actual portrait
+	nameOffset := 16 // Standard offset for right-side player names
+	
 	switch playerIndex {
 	case 0: // Human player
 		x, y = sl.HumanPlayerX, sl.HumanPlayerY
 	case 1: // AI 1 - Top-left, cards next to portrait under name
 		x, y = sl.AIPlayer1X+portraitWidth+1, sl.AIPlayer1Y+1
 	case 2: // AI 2 - Top-right, cards left of portrait under name  
-		x, y = sl.AIPlayer2X-16, sl.AIPlayer2Y+1
+		x, y = sl.AIPlayer2X-nameOffset, sl.AIPlayer2Y+1
 	case 3: // AI 3 - Bottom-left, cards next to portrait under name
 		x, y = sl.AIPlayer3X+portraitWidth+1, sl.AIPlayer3Y+1
 	case 4: // AI 4 - Bottom-right, cards left of portrait under name
-		x, y = sl.AIPlayer4X-16, sl.AIPlayer4Y+1
+		x, y = sl.AIPlayer4X-nameOffset, sl.AIPlayer4Y+1
 	default:
 		return
 	}
