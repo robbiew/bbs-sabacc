@@ -36,20 +36,23 @@ Example from card database. I'm open to a re-design of the cards as well.
 
 ## ANSI Art Files Requested
 
-### Existing Files (in `/ansi/` directory)
-1. **`title.ans`** - Main game title/logo
-2. **`menu.ans`** - Main Menu (Play, Quit, etc.)
-3. **`portraits.ans`** - External AI player portrait collection
-4. **`sabacc.ans`** - Main Sabacc logo/branding
-5. **`result-bomb.ans`** - "Bomb out" result screen (lose condition)
-6. **`result-sabacc.ans`** - "Pure Sabacc" victory screen (win condition)
+### Some of these exist in `/ansi/` directory
+1. **`title.ans`** - 80x25 Main game title/logo
+2. **`menu.ans`** - Main Menu (Play, Quit, View Leaderboard, etc.)
+3. **`portraits.ans`** - External AI player portrait collection (see below)
+4. **`sabacc.ans`** - Sabacc logo/branding
+5. **`result-bomb.ans`** - "Bomb out" result screen (loser condition)
+6. **`result-sabacc.ans`** - "Pure Sabacc" victory screen (winner condition)
 7. **`result-shift.ans`** - "Sabacc Shift" event screen (in-game event)
+8. **`game-UI.ans`** - Mockup of UI (PNG above)
+9. **`card-preview.ans`** - Example of cards (shape, colors, symbols - PNG above)
+10. **`leaderboard.ans`** - header and table grid for top credit wins, losses Leaderboard
+11. **`exit.ans`** - 80x25 exit screen
 
 ### Portrait System Details
-- **4 AI Characters**: PHOOJA, ASH-TAAC, OOLANGA, KY'ALA
+- **4-??? AI Characters**: Rogues, gamblers, droids, aliens, etc.
 - **Portrait Dimensions**: 9 characters wide × 6 characters high
-- **Border System**: 1-character border around portraits when active
-- **Position**: Corner locations (top-left, top-right, bottom-left, bottom-right)
+- **File specs**: Single .ans file with portraits stacked
 
 ### Card Specifications
 **Total Cards in 1989 Classic Sabacc Deck: 76 cards**
