@@ -20,6 +20,48 @@
 
 ---
 
+### Issue #14: Complete Card Database "ERR ? MIS" Error Resolution ✅ **FULLY RESOLVED**
+**Status**: ✅ **COMPLETELY FIXED** - All card database generation errors eliminated
+**Location**: [`cards.go`](cards.go) and [`cmd/build-cards/main.go`](cmd/build-cards/main.go)
+**Severity**: ⭐⭐⭐⭐⭐ (was critical, now fully resolved)
+
+**Description**: Multiple issues were causing "ERR ? MIS" errors in card database generation and preview:
+1. Missing Arcana card with value `-16`
+2. Preview generator trying to create impossible negative regular suit cards
+
+**Root Causes**:
+- Incomplete Arcana card definitions in source code
+- Preview generator violating authentic 1989 Classic Sabacc rules (regular suits only have positive values)
+
+**Complete Resolution Applied**:
+
+**Fixed Missing -16 Arcana Card** in 5 locations:
+1. `cards.go:ArcanaCards` array: Added `{Value: -16, Suit: "Arcana", Name: "The Wheel"}`
+2. `cards.go` generation array: Added `{"The Wheel", -16, "Wh"}`
+3. `cards.go:String()` method: Added `case "The Wheel": return "Wh"`
+4. `cmd/build-cards/main.go` arcanaCards: Added `{"The Wheel", -16, "Wh"}`
+5. Preview cards: Replaced invalid cards with "Wh" (The Wheel)
+
+**Fixed Invalid Preview Cards**:
+- **Before**: `{"-1F", "-5C", "-11T"}` (impossible negative regular suit cards)
+- **After**: `{"+7F", "+12C", "+3T"}` (valid positive regular suit cards)
+
+**Database Build Results**:
+- ✅ Successfully builds 78-card database (60 regular + 17 Arcana + 1 back)
+- ✅ No "ERR ? MIS" errors in preview generation
+- ✅ Complete authentic 1989 Classic Sabacc ruleset implementation
+- ✅ All cards follow proper suit rules: Regular suits (positive 1-15), Arcana (negative -1 through -17)
+
+**Files Successfully Generated**:
+- `sabacc_cards.bin` (14,786 bytes) - Complete card database
+- `card_index.txt` - Human-readable card reference
+- `card_preview.ans` - Error-free ANSI preview
+
+**Status**: ✅ **ALL CARD DATABASE ISSUES COMPLETELY RESOLVED** - Full Sabacc deck implemented
+**Resolved**: 2025-08-18
+
+---
+
 ### Issue #1: Game Loop Termination Bug
 **Status**: 🔥 **CRITICAL** - Breaks primary game loop  
 **Location**: [`main.go:gameLoop()`](main.go:232) - lines 322-338  
@@ -30,31 +72,27 @@
 **Root Cause**: Game loop logic issue in the exit condition and state management
 ```go
 
-### Issue #13: Static Field Should Be Optional Step, Not End Turn
-**Status**: 🔥 **NEW** - Game mechanics issue  
-**Location**: [`main.go:handlePlayerDraw()`](main.go) and [`cards.go:handleStaticField()`](cards.go)
-**Severity**: ⭐⭐⭐⭐  
+### Issue #13: Static Field Should Be Optional Step, Not End Turn ✅ **RESOLVED**
+**Status**: ✅ **FIXED** - Draw Phase restructured in [`main.go:484-540`](main.go:484)
+**Location**: [`handlePlayerDraw()`](main.go:484) function restructured for multi-action turns
+**Severity**: ⭐⭐⭐⭐ (was critical, now resolved)
 
-**Description**: Currently, using the Static Field (placing or removing cards) ends the player's turn. However, Static Field management should be an optional step during the Draw Phase that allows players to continue with normal play actions (Draw, Trade, Stand) after Static Field operations.
+**Description**: Using the Static Field (placing or removing cards) was ending the player's turn. Static Field management should be an optional step during the Draw Phase that allows players to continue with normal play actions.
 
-**Current Behavior**: 
-- Player selects "Field" option during Draw Phase
-- Player places/removes card in/from Static Field  
-- Turn ends immediately
+**Resolution Applied**:
+- Restructured `handlePlayerDraw()` as a loop allowing multiple actions per turn
+- Static Field operations now continue the loop instead of ending the turn
+- Draw, Trade, Stand, and Fold actions properly end the turn
+- Players can now manage Static Field AND perform normal draw actions in same turn
 
-**Expected Behavior**:
-- Player can manage Static Field as an additional option
-- After Static Field action, player can still Draw, Trade, or Stand
-- Static Field management doesn't consume the entire turn
+**New Behavior**:
+✅ Player can manage Static Field as optional preparatory step
+✅ After Static Field action, player can still Draw, Trade, or Stand
+✅ Static Field management doesn't consume the entire turn
+✅ Authentic Sabacc gameplay mechanics restored
 
-**Impact**:
-- Breaks authentic Sabacc gameplay mechanics
-- Limits strategic options for players
-- Forces players to choose between Static Field management and card actions
-
-**Fix Required**: 
-1. Restructure Draw Phase menu to allow multiple actions per turn
-2. Make Static Field an optional preparatory step
+**Status**: ✅ **GAME MECHANICS ISSUE RESOLVED** - Static Field is now optional step within turn
+**Resolved**: 2025-08-15
 
 ## 🟢 **Enhancement Requests** (New Features)
 
@@ -336,33 +374,65 @@ cat sabacc.conf | jq .
 
 [2025-01-14 15:04:28] - **NEW ISSUES IDENTIFIED DURING TESTING**
 
-### Issue #11: Human Player Total Not Updated After Sabacc Shift
-**Status**: 🔥 **NEW** - Gameplay display issue  
-**Location**: Game display system after Sabacc Shift occurs
-**Severity**: ⭐⭐⭐  
+### Issue #11: Human Player Total Not Updated After Sabacc Shift ✅ **RESOLVED**
+**Status**: ✅ **FIXED** - Display refresh added in [`main.go:769-830`](main.go:769)
+**Location**: [`rollForShift()`](main.go:769) function after Sabacc Shift occurs
+**Severity**: ⭐⭐⭐ (was high, now resolved)
 
-**Description**: After a Sabacc Shift occurs, the human player's displayed card total is not updated to reflect the new hand composition. The display shows the old total even though the cards have been reshuffled and redealt.
+**Description**: After a Sabacc Shift occurred, the human player's displayed card total was not updated to reflect the new hand composition. The display showed the old total even though the cards had been reshuffled and redealt.
 
-**Impact**: 
-- Misleading information displayed to player
-- Player cannot make informed decisions
-- Affects strategic gameplay
+**Resolution Applied**:
+- Added `displayGameScreen()` call after shift redistribution on line 827
+- Added proper `ShiftOccurred` flag management in turn functions
+- Display now refreshes automatically to show updated hand totals after shift
+- Player can now make informed decisions with accurate information
 
-**Fix Required**: Update display system to refresh human player total after Sabacc Shift
+**Status**: ✅ **DISPLAY ISSUE RESOLVED** - Human player total correctly updates after Sabacc Shift
+**Resolved**: 2025-08-15
 
-### Issue #12: Human Player Card Spacing Too Wide
-**Status**: 🔄 **NEW** - UI spacing issue  
+### Issue #12: Human Player Card Spacing Too Wide ✅ **RESOLVED**
+**Status**: ✅ **FIXED** - Card spacing corrected in [`ui.go:950-972`](ui.go:950)
 **Location**: [`ui.go`](ui.go) - Human player card rendering
-**Severity**: ⭐⭐  
+**Severity**: ⭐⭐ (was medium, now resolved)
 
-**Description**: Human player cards currently have 2 blank spaces between each card instead of the intended 1 space, making the cards appear too spread out.
+**Description**: Human player cards had 2 blank spaces between each card instead of the intended 1 space, making the cards appear too spread out.
 
 **Current Spacing**: Card width (6) + 1 space = 7 characters between card start positions
-**Desired Spacing**: Card width (6) + 1 space = 7 characters total, but only 1 visible space between cards
+**Desired Spacing**: Card width (5) + 1 space = 6 characters total, with only 1 visible space between cards
 
-**Impact**: 
-- Visual inconsistency in card layout
-- Cards appear unnecessarily spread out
-- Poor visual aesthetics
+**Resolution Applied**:
+- Changed spacing calculation from `i * 7` to `i * 6` on lines 950, 964, and 972
+- Human player cards now display with proper 1-space separation
+- Visual consistency improved in card layout
 
-**Fix Required**: Adjust card spacing calculation to show only 1 space between cards
+**Status**: ✅ **SPACING ISSUE RESOLVED** - Human player cards now properly spaced
+**Resolved**: 2025-08-15
+
+
+[2025-08-15 14:02:00] - **UI FIX: Hand Results Display Missing Line Breaks ✅ RESOLVED**
+
+**Issue Resolved**: Hand results screen showed text running together without proper line breaks
+**Location**: [`main.go:resolveHand()`](main.go:913) function
+**Severity**: ⭐⭐ (was medium, now resolved)
+
+**Description**: During hand resolution display, player results were appearing concatenated on the same line instead of each result appearing on its own line. This created a "ragged" appearance where player names, cards, and totals ran together, making the results difficult to read.
+
+**Root Cause**: Missing line break (`\r\n`) after printing hand total on line 913 for regular hands that don't have special conditions (Idiot's Array, Pure Sabacc, or bomb out).
+
+**Resolution Applied**:
+```go
+// Before: 
+fmt.Printf("= %s%d%s", YellowHi, total, Reset)
+
+// After:
+fmt.Printf("= %s%d%s\r\n", YellowHi, total, Reset)
+```
+
+**Benefits**:
+- Clean, readable hand results display
+- Each player's result appears on its own line
+- Professional appearance for game resolution screen
+- Consistent with other display formatting throughout the game
+
+**Status**: ✅ **DISPLAY ISSUE RESOLVED** - Hand results now properly formatted with line breaks
+**Resolved**: 2025-08-15

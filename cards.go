@@ -68,6 +68,7 @@ var ArcanaCards = []Card{
 	{Value: -13, Suit: "Arcana", Name: "Futility"},
 	{Value: -14, Suit: "Arcana", Name: "Mistress"},
 	{Value: -15, Suit: "Arcana", Name: "Idiot"},
+	{Value: -16, Suit: "Arcana", Name: "The Wheel"},
 	{Value: -17, Suit: "Arcana", Name: "Star"},
 }
 
@@ -233,6 +234,7 @@ func (db *CardDatabase) CreateDefault() (*CardDatabase, error) {
 		{"Futility", -13, "Fu"},
 		{"Mistress", -14, "Mi"},
 		{"Idiot", -15, "Id"},
+		{"The Wheel", -16, "Wh"},
 		{"Star", -17, "Sr"},
 	}
 
@@ -565,6 +567,8 @@ func (c Card) String() string {
 			return "Mi"
 		case "Idiot":
 			return "Id"
+		case "The Wheel":
+			return "Wh"
 		case "Star":
 			return "Sr"
 		default:
@@ -813,9 +817,6 @@ func placeInStaticField() {
 		return
 	}
 
-	// Clear the previous menu before showing the new one
-	game.Layout.ClearMenuArea()
-
 	// Create menu options for each card in hand
 	var cardOptions []MenuOption
 	for i, card := range player.Hand {
@@ -827,12 +828,15 @@ func placeInStaticField() {
 	}
 	cardOptions = append(cardOptions, MenuOption{'0', "Cancel", true})
 
-	game.Layout.ShowMenu("Place in Static Field", cardOptions, "Card choice: ")
+	game.Layout.ShowCompactMenu(cardOptions)
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
 		return
 	}
+
+	// Clear the compact menu after selection
+	game.Layout.ClearCompactMenu()
 
 	choice := int(char - '0')
 	if choice == 0 {
@@ -877,9 +881,6 @@ func removeFromStaticField() {
 		return
 	}
 
-	// Clear the previous menu before showing the new one
-	game.Layout.ClearMenuArea()
-
 	// Create menu options for each card in static field
 	var cardOptions []MenuOption
 	for i, card := range player.StaticField {
@@ -891,12 +892,15 @@ func removeFromStaticField() {
 	}
 	cardOptions = append(cardOptions, MenuOption{'0', "Cancel", true})
 
-	game.Layout.ShowMenu("Remove from Static Field", cardOptions, "Card choice: ")
+	game.Layout.ShowCompactMenu(cardOptions)
 
 	char, _, err := getKeyWithTimeout()
 	if err != nil {
 		return
 	}
+
+	// Clear the compact menu after selection
+	game.Layout.ClearCompactMenu()
 
 	choice := int(char - '0')
 	if choice == 0 {

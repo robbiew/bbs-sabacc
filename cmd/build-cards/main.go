@@ -305,6 +305,7 @@ func generateAllCards() []CardDefinition {
 		{"Futility", -13, "Fu"},
 		{"Mistress", -14, "Mi"},
 		{"Idiot", -15, "Id"},
+		{"The Wheel", -16, "Wh"},
 		{"Star", -17, "Sr"},
 	}
 
@@ -537,9 +538,9 @@ func createANSIPreview() error {
 		cards       []string
 		color       string
 	}{
-		{"Sample Sabers (" + CP437_UP_ARROW + ")", "Positive values from the Sabers suit", []string{"+1S", "+5S", "+10S", "AcS"}, BLUE_HI},
-		{"Other Suits:", "Including negative cards from each suit", []string{"-1F", "-5C", "-11T", "BACK"}, GREEN_HI},
-		{"Arcana Cards:", "Mystical cards with special powers", []string{"Id", "De", "St", "Ba"}, MAGENTA_HI},
+		{"Sample Sabers (" + CP437_UP_ARROW + ")", "Positive values from the Sabers suit", []string{"+1S", "+5S", "+10S", "+15S"}, BLUE_HI},
+		{"Other Suits:", "One card from each traditional suit", []string{"+7F", "+12C", "+3T", "BACK"}, GREEN_HI},
+		{"Arcana Cards:", "Mystical cards with special powers", []string{"Id", "De", "Wh", "Ba"}, MAGENTA_HI},
 	}
 
 	// Create a map for quick card lookup

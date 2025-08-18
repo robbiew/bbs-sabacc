@@ -336,6 +336,9 @@ func gameLoop() {
 
 // Updated handlePlayerTurn function using Classic Sabacc 4-phase turn structure
 func handlePlayerTurn() {
+	// Reset shift flag at start of turn
+	game.ShiftOccurred = false
+	
 	// PHASE 1: BETTING PHASE
 	if !handlePlayerBetting() {
 		return // Player folded during betting
@@ -480,54 +483,75 @@ func handlePlayerCall() bool {
 	}
 }
 
-// PHASE 4: Draw Phase (Classic Sabacc)
+// PHASE 4: Draw Phase (Classic Sabacc) - Allow multiple actions per turn
 func handlePlayerDraw() {
 	game.Layout.DisplayMessage("DRAW PHASE", "info", 0)
 	time.Sleep(1 * time.Second)
 
-	drawOptions := []MenuOption{
-		{'D', "Draw", true},
-		{'T', "Trade", true},
-		{'S', "Stand", true},
-		{'F', "Field", true},
-		{'Q', "Fold", true},
-	}
-
-	game.Layout.ShowCompactMenu(drawOptions)
-
-	char, _, err := getKeyWithTimeout()
-	if err != nil {
-		return
-	}
-
-	// Clear the compact menu after selection
-	game.Layout.ClearCompactMenu()
-
-	playerRef := &game.Players[0]
-
-	switch char {
-	case 'd', 'D':
-		if len(game.Deck.Cards) > 0 {
-			card := game.Deck.Deal()
-			playerRef.Hand = append(playerRef.Hand, card)
-			game.Layout.DisplayMessage("You drew: ["+card.String()+"]", "success", 0)
-			time.Sleep(2 * time.Second)
-		} else {
-			game.Layout.DisplayMessage("No more cards in deck!", "error", 0)
-			time.Sleep(1 * time.Second)
+	// Loop to allow multiple actions per turn
+	for {
+		drawOptions := []MenuOption{
+			{'D', "Draw", true},
+			{'T', "Trade", true},
+			{'S', "Stand", true},
+			{'F', "Field", true},
+			{'Q', "Fold", true},
 		}
-	case 't', 'T':
-		handleTradeCard()
-	case 's', 'S':
-		game.Layout.DisplayMessage("You stand.", "info", 0)
-		time.Sleep(1 * time.Second)
-	case 'f', 'F':
-		handleStaticField()
-	default:
-		game.Layout.DisplayMessage("Invalid choice! Press D/T/S/F", "error", 0)
-		time.Sleep(1 * time.Second)
-		handlePlayerDraw() // Loop back for valid input
-		return
+
+		game.Layout.ShowCompactMenu(drawOptions)
+
+		char, _, err := getKeyWithTimeout()
+		if err != nil {
+			return
+		}
+
+		// Clear the compact menu after selection
+		game.Layout.ClearCompactMenu()
+
+		playerRef := &game.Players[0]
+
+		switch char {
+		case 'd', 'D':
+			if len(game.Deck.Cards) > 0 {
+				card := game.Deck.Deal()
+				playerRef.Hand = append(playerRef.Hand, card)
+				game.Layout.DisplayMessage("You drew: ["+card.String()+"]", "success", 0)
+				time.Sleep(2 * time.Second)
+			} else {
+				game.Layout.DisplayMessage("No more cards in deck!", "error", 0)
+				time.Sleep(1 * time.Second)
+			}
+			return // Turn ends after drawing
+			
+		case 't', 'T':
+			handleTradeCard()
+			return // Turn ends after trading
+			
+		case 's', 'S':
+			game.Layout.DisplayMessage("You stand.", "info", 0)
+			time.Sleep(1 * time.Second)
+			return // Turn ends after standing
+			
+		case 'f', 'F':
+			handleStaticField()
+			// Continue loop - don't end turn after Static Field operation
+			game.Layout.DisplayMessage("Static Field updated. Choose next action:", "info", 0)
+			time.Sleep(1 * time.Second)
+			
+		case 'q', 'Q':
+			// Fold
+			playerRef.Folded = true
+			playerRef.Credits -= 1 // Fold penalty goes to Sabacc Pot
+			game.SabaccPot += 1
+			game.Layout.DisplayMessage("You folded (-1 credit penalty)", "warning", 0)
+			time.Sleep(2 * time.Second)
+			return // Turn ends after folding
+			
+		default:
+			game.Layout.DisplayMessage("Invalid choice! Press D/T/S/F/Q", "error", 0)
+			time.Sleep(1 * time.Second)
+			// Continue loop for valid input
+		}
 	}
 }
 
@@ -547,6 +571,9 @@ func handleComputerTurn() {
 	if computer.Folded {
 		return
 	}
+	
+	// Reset shift flag at start of turn
+	game.ShiftOccurred = false
 
 	game.Layout.LogMessage(computer.Name+" is thinking... ", "info")
 	time.Sleep(getAIDelay())
@@ -823,6 +850,12 @@ func rollForShift() {
 			}
 		}
 
+		// Update display to show new hand totals after shift
+		displayGameScreen()
+		
+		// Set shift occurred flag
+		game.ShiftOccurred = true
+
 		time.Sleep(3 * time.Second)
 	} else {
 		time.Sleep(1 * time.Second)
@@ -877,7 +910,7 @@ func resolveHand() {
 		for _, card := range playerData.Hand {
 			fmt.Printf("%s[%s]%s ", getCardColor(card), card.String(), Reset)
 		}
-		fmt.Printf("= %s%d%s", YellowHi, total, Reset)
+		fmt.Printf("= %s%d%s\r\n", YellowHi, total, Reset)
 
 		// Check for special hands (Sabacc Pot winners)
 		if isIdiotsArray(playerData.Hand) {

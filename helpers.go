@@ -355,8 +355,11 @@ func displayAsciiArt(artType string) {
 		return
 	}
 	
+	// Strip SAUCE metadata before displaying
+	cleanArtContent := TrimStringFromSauce(artContent)
+	
 	// Display the embedded ANSI art (already centered in the .ans files)
-	fmt.Print(artContent)
+	fmt.Print(cleanArtContent)
 }
 
 
